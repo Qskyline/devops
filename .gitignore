@@ -2,3 +2,4 @@
 /src/main/resources/static/
 .idea
 platform-server.iml
+/skylineLogs/

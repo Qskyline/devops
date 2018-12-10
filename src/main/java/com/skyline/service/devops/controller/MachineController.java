@@ -30,7 +30,7 @@ public class MachineController extends BaseController {
     public ResponseModel addMachine(@RequestBody JSONObject args) {
         String loginType = (String) args.get("loginType");
         String ip = (String) args.get("ip");
-        String param_port = (String) args.get("port");
+        String param_port = (String) args.get("loginPort");
         String loginUser = (String) args.get("loginUser");
         String loginPassword = (String) args.get("loginPassword");
         String loginCmd = (String) args.get("loginCmd");
