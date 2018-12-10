@@ -25,6 +25,22 @@ public class MachineEntity {
     private String rootCmd;
     private List<TagEntity> tags;
 
+    public MachineEntity(String ip, int sshPort, String loginType, String loginUser, String loginPassword, String loginUserCmd, boolean isActiveSudoRoot, boolean isActiveSuRoot, String rootPassword, String rootCmd) {
+        this.ip = ip;
+        this.sshPort = sshPort;
+        this.loginType = loginType;
+        this.loginUser = loginUser;
+        this.loginPassword = loginPassword;
+        this.loginUserCmd = loginUserCmd;
+        this.isActiveSudoRoot = isActiveSudoRoot;
+        this.isActiveSuRoot = isActiveSuRoot;
+        this.rootPassword = rootPassword;
+        this.rootCmd = rootCmd;
+    }
+
+    public MachineEntity() {
+    }
+
     @Id
     @Column(name = "id")
     @GeneratedValue(generator = "machine_id")

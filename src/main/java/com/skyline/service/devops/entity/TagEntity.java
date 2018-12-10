@@ -14,6 +14,13 @@ public class TagEntity {
     private String name;
     private MachineEntity machine;
 
+    public TagEntity(String name, MachineEntity machine) {
+        this.name = name;
+        this.machine = machine;
+    }
+
+    public TagEntity() {}
+
     @Id
     @Column(name = "id")
     @GeneratedValue(generator = "machine_tag_id")
