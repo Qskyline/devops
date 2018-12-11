@@ -36,6 +36,7 @@ npm install
 npm run build
 
 rm -fr $workdir/src/main/resources/static/*
+mkdir -p $workdir/src/main/resources/static/*
 cp -fr dist/* $workdir/src/main/resources/static/
 
 git checkout $current_branch
