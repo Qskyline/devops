@@ -1,5 +1,6 @@
 package com.skyline.service.devops.entity;
 
+import com.skyline.platform.core.entity.User;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
@@ -23,9 +24,10 @@ public class MachineEntity {
     private boolean isActiveSuRoot;
     private String rootPassword;
     private String rootCmd;
+    private User user;
     private List<TagEntity> tags;
 
-    public MachineEntity(String ip, int sshPort, String loginType, String loginUser, String loginPassword, String loginUserCmd, boolean isActiveSudoRoot, boolean isActiveSuRoot, String rootPassword, String rootCmd) {
+    public MachineEntity(String ip, int sshPort, String loginType, String loginUser, String loginPassword, String loginUserCmd, boolean isActiveSudoRoot, boolean isActiveSuRoot, String rootPassword, String rootCmd, User user) {
         this.ip = ip;
         this.sshPort = sshPort;
         this.loginType = loginType;
@@ -36,6 +38,7 @@ public class MachineEntity {
         this.isActiveSuRoot = isActiveSuRoot;
         this.rootPassword = rootPassword;
         this.rootCmd = rootCmd;
+        this.user = user;
     }
 
     public MachineEntity() {
@@ -140,5 +143,14 @@ public class MachineEntity {
     }
     public void setTags(List<TagEntity> tags) {
         this.tags = tags;
+    }
+
+    @ManyToOne(targetEntity=User.class, fetch=FetchType.LAZY)
+    @JoinColumn(name="user_id", referencedColumnName="id", nullable=false, foreignKey=@ForeignKey(name="fk_user_machines"))
+    public User getUser() {
+        return user;
+    }
+    public void setUser(User user) {
+        this.user = user;
     }
 }
