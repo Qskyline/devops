@@ -30,7 +30,7 @@ public class MachineController extends BaseController {
     public ResponseModel addMachine(@RequestBody JSONObject args) {
         String loginType = (String) args.get("loginType");
         String ip = (String) args.get("ip");
-        String param_port = (String) args.get("loginPort");
+        String param_port = String.valueOf(args.get("loginPort"));
         String loginUser = (String) args.get("loginUser");
         String loginPassword = (String) args.get("loginPassword");
         String loginCmd = (String) args.get("loginCmd");
@@ -91,7 +91,8 @@ public class MachineController extends BaseController {
 
     @RequestMapping(value = {"/security/getAllMachine.do"}, produces = {"application/json;charset=UTF-8"}, method = {RequestMethod.POST})
     public ResponseModel getAllMachine() {
-        List<MachineEntity> machines = machineService.getAllMachine();
+
+        List<MachineEntity> machines = machineService.getCurrentUserAllMachine();
         JSONArray result = new JSONArray();
         for (MachineEntity machine : machines) {
             List<TagEntity> tags = machine.getTags();

@@ -1,7 +1,6 @@
 package com.skyline.service.devops.service;
 
 import com.skyline.platform.core.entity.User;
-import com.skyline.platform.core.service.UserService;
 import com.skyline.service.devops.dao.MachineDao;
 import com.skyline.service.devops.dao.TagDao;
 import com.skyline.service.devops.entity.MachineEntity;
@@ -9,11 +8,8 @@ import com.skyline.service.devops.entity.TagEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,7 +20,7 @@ public class MachineService {
     @Autowired
     private TagDao tagDao;
     @Autowired
-    private UserService userService;
+    private MyUserService myUserService;
 
     private Logger logger = LoggerFactory.getLogger(MachineService.class);
 
@@ -42,9 +38,7 @@ public class MachineService {
                            ArrayList<String> tags) {
 
         //获取登陆用户信息
-        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        String userName = userDetails.getUsername();
-        User user = userService.getUser(userName);
+        User user = myUserService.getCurrentUser();
 
         //检查机器是否已经存在
         List<MachineEntity> machineEntitys = machineDao.findByIp(ip);
@@ -106,4 +100,9 @@ public class MachineService {
         return machineDao.findAll();
     }
 
+    @Transactional
+    public List<MachineEntity> getCurrentUserAllMachine() {
+        User user = myUserService.getCurrentUser();
+        return machineDao.findByUser(user);
+    }
 }
