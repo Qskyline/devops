@@ -5,6 +5,7 @@ import com.skyline.platform.core.model.ResponseModel;
 import com.skyline.service.devops.entity.MachineEntity;
 import com.skyline.service.devops.entity.TagEntity;
 import com.skyline.service.devops.service.MachineService;
+import com.skyline.service.devops.service.MyUserService;
 import com.skyline.util.ExceptionUtil;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
@@ -24,6 +25,8 @@ import java.util.List;
 public class MachineController extends BaseController {
     @Autowired
     MachineService machineService;
+    @Autowired
+    MyUserService myUserService;
 
     Logger logger = LoggerFactory.getLogger(MachineController.class);
 
@@ -92,8 +95,10 @@ public class MachineController extends BaseController {
 
     @RequestMapping(value = {"/security/getAllMachine.do"}, produces = {"application/json;charset=UTF-8"}, method = {RequestMethod.POST})
     public ResponseModel getAllMachine() {
-
-        List<MachineEntity> machines = machineService.getCurrentUserAllMachine();
+        boolean isAdminUser = myUserService.hasRole("admin");
+        List<MachineEntity> machines;
+        if (isAdminUser)  machines = machineService.getAllMachine();
+        else machines = machineService.getCurrentUserAllMachine();
         JSONArray result = new JSONArray();
         for (MachineEntity machine : machines) {
             List<TagEntity> tags = machine.getTags();
@@ -110,6 +115,7 @@ public class MachineController extends BaseController {
             json.put("sshPort", machine.getSshPort());
             json.put("loginUser", machine.getLoginUser());
             json.put("tags", str_tags);
+            if (isAdminUser) json.put("belong", machine.getUser().getUsername());
             result.add(json);
         }
         return new ResponseModel(result);
