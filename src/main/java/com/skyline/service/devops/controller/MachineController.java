@@ -2,10 +2,10 @@ package com.skyline.service.devops.controller;
 
 import com.skyline.platform.core.controller.BaseController;
 import com.skyline.platform.core.model.ResponseModel;
+import com.skyline.platform.core.service.UserService;
 import com.skyline.service.devops.entity.MachineEntity;
 import com.skyline.service.devops.entity.TagEntity;
 import com.skyline.service.devops.service.MachineService;
-import com.skyline.service.devops.service.MyUserService;
 import com.skyline.util.ExceptionUtil;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
@@ -26,7 +26,7 @@ public class MachineController extends BaseController {
     @Autowired
     MachineService machineService;
     @Autowired
-    MyUserService myUserService;
+    UserService userService;
 
     Logger logger = LoggerFactory.getLogger(MachineController.class);
 
@@ -95,7 +95,7 @@ public class MachineController extends BaseController {
 
     @RequestMapping(value = {"/security/getAllMachine.do"}, produces = {"application/json;charset=UTF-8"}, method = {RequestMethod.POST})
     public ResponseModel getAllMachine() {
-        boolean isAdminUser = myUserService.hasRole("admin");
+        boolean isAdminUser = userService.hasRole("admin");
         List<MachineEntity> machines;
         if (isAdminUser)  machines = machineService.getAllMachine();
         else machines = machineService.getCurrentUserAllMachine();
