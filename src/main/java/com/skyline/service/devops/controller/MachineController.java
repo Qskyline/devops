@@ -2,6 +2,7 @@ package com.skyline.service.devops.controller;
 
 import com.skyline.platform.core.controller.BaseController;
 import com.skyline.platform.core.model.ResponseModel;
+import com.skyline.platform.core.model.ResponseStatus;
 import com.skyline.platform.core.service.UserService;
 import com.skyline.service.devops.entity.MachineEntity;
 import com.skyline.service.devops.entity.TagEntity;
@@ -53,7 +54,7 @@ public class MachineController extends BaseController {
             String errMsg =  "The \"port\" param must be numeric.";
             logger.error(errMsg);
             logger.error(ExceptionUtil.getStackTrace(e));
-            return new ResponseModel(ResponseModel.Status.OPERATION_FAILED, errMsg);
+            return new ResponseModel(ResponseStatus.OPERATION_ERROR_PARAMS, errMsg);
         }
 
         boolean activeSudoRoot = false;
@@ -69,7 +70,7 @@ public class MachineController extends BaseController {
             String errMsg = "The params \"activeSudoRoot\" and(or) \"activeSuRoot\" must be boolean.";
             logger.error(errMsg);
             logger.error(ExceptionUtil.getStackTrace(e));
-            return new ResponseModel(ResponseModel.Status.OPERATION_FAILED, errMsg);
+            return new ResponseModel(ResponseStatus.OPERATION_ERROR_PARAMS, errMsg);
         }
 
         if (StringUtils.isBlank(loginType)
@@ -80,7 +81,7 @@ public class MachineController extends BaseController {
                 || StringUtils.isBlank(param_tags)) {
             String errMsg = "Can not fetch enough params.";
             logger.error(errMsg);
-            return new ResponseModel(ResponseModel.Status.OPERATION_FAILED,errMsg);
+            return new ResponseModel(ResponseStatus.OPERATION_ERROR_PARAMS,errMsg);
         }
 
         String[] _tags = param_tags.split(",");
