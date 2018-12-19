@@ -7,7 +7,7 @@ import com.skyline.platform.core.service.UserService;
 import com.skyline.service.devops.entity.MachineEntity;
 import com.skyline.service.devops.entity.TagEntity;
 import com.skyline.service.devops.service.MachineService;
-import com.skyline.util.ExceptionUtil;
+import com.skyline.util.StringUtil;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
@@ -53,7 +53,7 @@ public class MachineController extends BaseController {
         } catch (Exception e) {
             String errMsg =  "The \"port\" param must be numeric.";
             logger.error(errMsg);
-            logger.error(ExceptionUtil.getStackTrace(e));
+            logger.error(StringUtil.getExceptionStackTraceMessage(e));
             return new ResponseModel(ResponseStatus.OPERATION_ERROR_PARAMS, errMsg);
         }
 
@@ -69,7 +69,7 @@ public class MachineController extends BaseController {
         } catch (Exception e) {
             String errMsg = "The params \"activeSudoRoot\" and(or) \"activeSuRoot\" must be boolean.";
             logger.error(errMsg);
-            logger.error(ExceptionUtil.getStackTrace(e));
+            logger.error(StringUtil.getExceptionStackTraceMessage(e));
             return new ResponseModel(ResponseStatus.OPERATION_ERROR_PARAMS, errMsg);
         }
 
