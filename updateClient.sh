@@ -31,6 +31,7 @@ fi
 current_branch=$(git branch | grep '*' | awk '{print $2}')
 build_branch=$branch"-build-"$(date "+%Y%m%d%H%M")
 git checkout -b $build_branch origin/$branch
+git pull
 
 npm install
 npm run build
