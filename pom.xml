@@ -9,6 +9,19 @@
     <version>1.0</version>
     <packaging>jar</packaging>
 
+    <repositories>
+        <repository>
+            <id>my-maven-repo</id>
+            <url>http://172.20.178.39:8081/repository/maven-releases/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
     <parent>
         <groupId>com.skyline.platform</groupId>
         <artifactId>pom</artifactId>
