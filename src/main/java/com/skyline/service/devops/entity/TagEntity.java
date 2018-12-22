@@ -12,11 +12,11 @@ import javax.persistence.*;
 public class TagEntity {
     private String id;
     private String name;
-    private MachineEntity machine;
+    private String machineId;
 
-    public TagEntity(String name, MachineEntity machine) {
+    public TagEntity(String name, String machineId) {
         this.name = name;
-        this.machine = machine;
+        this.machineId = machineId;
     }
 
     public TagEntity() {}
@@ -40,12 +40,11 @@ public class TagEntity {
         this.name = name;
     }
 
-    @ManyToOne(targetEntity=MachineEntity.class, fetch=FetchType.LAZY)
-    @JoinColumn(name="machine_id", referencedColumnName="id", nullable=false, foreignKey=@ForeignKey(name="fk_machine_machineTag"))
-    public MachineEntity getMachine() {
-        return machine;
+    @Column(name = "machine_id", length = 200, nullable = false)
+    public String getMachineId() {
+        return machineId;
     }
-    public void setMachine(MachineEntity machine) {
-        this.machine = machine;
+    public void setMachineId(String machineId) {
+        this.machineId = machineId;
     }
 }

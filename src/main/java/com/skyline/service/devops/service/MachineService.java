@@ -6,14 +6,16 @@ import com.skyline.service.devops.dao.MachineDao;
 import com.skyline.service.devops.dao.TagDao;
 import com.skyline.service.devops.entity.MachineEntity;
 import com.skyline.service.devops.entity.TagEntity;
+import com.skyline.util.SecurityUtil;
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 @Service
 public class MachineService {
@@ -37,10 +39,12 @@ public class MachineService {
                            boolean activeSuRoot,
                            String rootPassword,
                            String rootCmd,
-                           ArrayList<String> tags) {
+                           String desc,
+                           ArrayList<String> tags) throws Exception {
 
         //获取登陆用户信息
         User user = userService.getCurrentUser();
+        String userId = user.getId();
 
         //检查机器是否已经存在
         List<MachineEntity> machineEntitys = machineDao.findByIp(ip);
@@ -48,7 +52,7 @@ public class MachineService {
         if (machineEntitys != null && machineEntitys.size() > 0) {
             for (int i = 0; i< machineEntitys.size(); i++) {
                 MachineEntity machine = machineEntitys.get(i);
-                List<TagEntity> tagEntities = machine.getTags();
+                List<TagEntity> tagEntities = tagDao.findByMachineId(machine.getId());
                 if (tagEntities.size() == tags.size()) {
                     boolean flag = false;
                     for (String tag : tags) {
@@ -79,19 +83,27 @@ public class MachineService {
         //添加机器
         MachineEntity machine = new MachineEntity(
                 ip,
-                port,
+                String.valueOf(port),
                 loginType,
                 logingUser,
                 loginPassword,
-                loginCmd,
-                activeSudoRoot,
-                activeSuRoot,
-                rootPassword,
-                rootCmd,
-                user);
+                userId);
+        machine.setLoginUserCmd(loginCmd);
+        machine.setIsActiveSudoRoot(String.valueOf(activeSudoRoot));
+        machine.setIsActiveSuRoot(String.valueOf(activeSuRoot));
+        machine.setRootPassword(rootPassword);
+        machine.setRootCmd(rootCmd);
+        machine.setDescription(desc);
+        machine.setStatus("normal");
+        //machineDao.save(machine);
+        try {
+            lockMachineInfo(machine, "123242432443243");
+        } catch (Exception e) {
+            throw new Exception("Lock machine info failed.");
+        }
         machineDao.save(machine);
         for (String tag : tags) {
-            TagEntity tagEntity = new TagEntity(tag, machine);
+            TagEntity tagEntity = new TagEntity(tag, userId);
             tagDao.save(tagEntity);
         }
         return true;
@@ -105,6 +117,72 @@ public class MachineService {
     @Transactional
     public List<MachineEntity> getCurrentUserAllMachine() {
         User user = userService.getCurrentUser();
-        return machineDao.findByUser(user);
+        return machineDao.findByUserId(user.getId());
+    }
+
+    public User getMachineUser(String machineId) {
+        return new User();
+    }
+
+    private void lockMachineInfo(MachineEntity machineEntity, String key) throws Exception {
+        String rowKey = String.valueOf(new Random().nextDouble());
+//        machineEntity.setId(SecurityUtil.desEncrpt(machineEntity.getId(), rowKey));
+        machineEntity.setIp(SecurityUtil.desEncrpt(machineEntity.getIp(), rowKey));
+        machineEntity.setSshPort(SecurityUtil.desEncrpt(machineEntity.getSshPort(), rowKey));
+        machineEntity.setLoginType(SecurityUtil.desEncrpt(machineEntity.getLoginType(), rowKey));
+        machineEntity.setLoginUser(SecurityUtil.desEncrpt(machineEntity.getLoginUser(), rowKey));
+        machineEntity.setLoginPassword(SecurityUtil.desEncrpt(machineEntity.getLoginPassword(), rowKey));
+        machineEntity.setUserId(SecurityUtil.desEncrpt(machineEntity.getUserId(), rowKey));
+
+        String defaultValue = "q-null";
+        if (StringUtils.isEmpty(machineEntity.getLoginUserCmd())) machineEntity.setLoginUserCmd(defaultValue);
+        machineEntity.setLoginUserCmd(SecurityUtil.desEncrpt(machineEntity.getLoginUserCmd(), rowKey));
+
+        defaultValue = "false";
+        if (StringUtils.isEmpty(machineEntity.getIsActiveSudoRoot())) machineEntity.setIsActiveSudoRoot(defaultValue);
+        machineEntity.setIsActiveSudoRoot(SecurityUtil.desEncrpt(machineEntity.getIsActiveSudoRoot(), rowKey));
+
+        defaultValue = "false";
+        if (StringUtils.isEmpty(machineEntity.getIsActiveSuRoot())) machineEntity.setIsActiveSuRoot(defaultValue);
+        machineEntity.setIsActiveSuRoot(SecurityUtil.desEncrpt(machineEntity.getIsActiveSuRoot(), rowKey));
+
+        defaultValue = "q-null";
+        if (StringUtils.isEmpty(machineEntity.getRootPassword())) machineEntity.setRootPassword(defaultValue);
+        machineEntity.setRootPassword(SecurityUtil.desEncrpt(machineEntity.getRootPassword(), rowKey));
+
+        defaultValue = "q-null";
+        if (StringUtils.isEmpty(machineEntity.getRootCmd())) machineEntity.setRootCmd(defaultValue);
+        machineEntity.setRootCmd(SecurityUtil.desEncrpt(machineEntity.getRootCmd(), rowKey));
+
+        defaultValue = "q-null";
+        if (StringUtils.isEmpty(machineEntity.getDescription())) machineEntity.setDescription(defaultValue);
+        machineEntity.setDescription(SecurityUtil.desEncrpt(machineEntity.getDescription(), rowKey));
+
+        defaultValue = "normal";
+        if (StringUtils.isEmpty(machineEntity.getStatus())) machineEntity.setStatus(defaultValue);
+        machineEntity.setStatus(SecurityUtil.desEncrpt(machineEntity.getStatus(), rowKey));
+
+        machineEntity.setRowKey(SecurityUtil.desEncrpt(rowKey, key));
+
+        String fingerprint =
+                machineEntity.getId()
+                + machineEntity.getIp()
+                + machineEntity.getSshPort()
+                + machineEntity.getLoginType()
+                + machineEntity.getLoginUser()
+                + machineEntity.getLoginPassword()
+                + machineEntity.getUserId()
+                + machineEntity.getLoginUserCmd()
+                + machineEntity.getIsActiveSudoRoot()
+                + machineEntity.getIsActiveSuRoot()
+                + machineEntity.getRootPassword()
+                + machineEntity.getRootCmd()
+                + machineEntity.getDescription()
+                + machineEntity.getStatus()
+                + machineEntity.getRowKey();
+
+        System.out.println(fingerprint + "--------");
+
+        machineEntity.setFingerprint(SecurityUtil.Md5(SecurityUtil.desEncrpt(fingerprint, key)));
     }
 }

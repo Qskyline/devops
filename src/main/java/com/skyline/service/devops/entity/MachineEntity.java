@@ -1,44 +1,50 @@
 package com.skyline.service.devops.entity;
 
-import com.skyline.platform.core.entity.User;
-import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.GenericGenerator;
+
 import javax.persistence.*;
-import java.util.List;
 
 @Entity
 @DynamicInsert
 @DynamicUpdate
 @Table(name = "devops_machine")
 public class MachineEntity {
+    //必选
     private String id;
     private String ip;
-    private int sshPort;
+    private String sshPort;
     private String loginType;
     private String loginUser;
     private String loginPassword;
+    private String userId;
+
+    //可选
     private String loginUserCmd;
-    private boolean isActiveSudoRoot;
-    private boolean isActiveSuRoot;
+    private String isActiveSudoRoot;
+    private String isActiveSuRoot;
     private String rootPassword;
     private String rootCmd;
-    private User user;
-    private List<TagEntity> tags;
+    private String description;
+    private String status;
 
-    public MachineEntity(String ip, int sshPort, String loginType, String loginUser, String loginPassword, String loginUserCmd, boolean isActiveSudoRoot, boolean isActiveSuRoot, String rootPassword, String rootCmd, User user) {
+    //加密使用
+    private String rowKey;
+    private String fingerprint;
+
+    public MachineEntity(String ip,
+                         String sshPort,
+                         String loginType,
+                         String loginUser,
+                         String loginPassword,
+                         String userId) {
         this.ip = ip;
         this.sshPort = sshPort;
         this.loginType = loginType;
         this.loginUser = loginUser;
         this.loginPassword = loginPassword;
-        this.loginUserCmd = loginUserCmd;
-        this.isActiveSudoRoot = isActiveSudoRoot;
-        this.isActiveSuRoot = isActiveSuRoot;
-        this.rootPassword = rootPassword;
-        this.rootCmd = rootCmd;
-        this.user = user;
+        this.userId = userId;
     }
 
     public MachineEntity() {
@@ -55,7 +61,7 @@ public class MachineEntity {
         this.id = id;
     }
 
-    @Column(name = "ip", length = 15, nullable = false)
+    @Column(name = "ip", length = 200, nullable = false)
     public String getIp() {
         return ip;
     }
@@ -63,15 +69,15 @@ public class MachineEntity {
         this.ip = ip;
     }
 
-    @Column(name = "ssh_port", nullable = false)
-    public int getSshPort() {
+    @Column(name = "ssh_port", length = 200, nullable = false)
+    public String getSshPort() {
         return sshPort;
     }
-    public void setSshPort(int sshPort) {
+    public void setSshPort(String sshPort) {
         this.sshPort = sshPort;
     }
 
-    @Column(name = "login_type", length = 15, nullable = false)
+    @Column(name = "login_type", length = 200, nullable = false)
     public String getLoginType() {
         return loginType;
     }
@@ -79,7 +85,7 @@ public class MachineEntity {
         this.loginType = loginType;
     }
 
-    @Column(name = "login_user", length = 30, nullable = false)
+    @Column(name = "login_user", length = 500, nullable = false)
     public String getLoginUser() {
         return loginUser;
     }
@@ -87,7 +93,7 @@ public class MachineEntity {
         this.loginUser = loginUser;
     }
 
-    @Column(name = "login_password", length = 2000, nullable = false)
+    @Column(name = "login_password", length = 500, nullable = false)
     public String getLoginPassword() {
         return loginPassword;
     }
@@ -95,7 +101,7 @@ public class MachineEntity {
         this.loginPassword = loginPassword;
     }
 
-    @Column(name = "login_cmd", length = 2000)
+    @Column(name = "login_cmd", length = 2000, nullable = false)
     public String getLoginUserCmd() {
         return loginUserCmd;
     }
@@ -103,25 +109,23 @@ public class MachineEntity {
         this.loginUserCmd = loginUserCmd;
     }
 
-    @Column(name = "active_sudo_root")
-    @ColumnDefault("false")
-    public boolean getIsActiveSudoRoot() {
+    @Column(name = "active_sudo_root", length = 100, nullable = false)
+    public String getIsActiveSudoRoot() {
         return isActiveSudoRoot;
     }
-    public void setIsActiveSudoRoot(boolean isActiveSudoRoot) {
+    public void setIsActiveSudoRoot(String isActiveSudoRoot) {
         this.isActiveSudoRoot = isActiveSudoRoot;
     }
 
-    @Column(name = "active_su_root")
-    @ColumnDefault("false")
-    public boolean getIsActiveSuRoot() {
+    @Column(name = "active_su_root", length = 100, nullable = false)
+    public String getIsActiveSuRoot() {
         return isActiveSuRoot;
     }
-    public void setIsActiveSuRoot(boolean isActiveSuRoot) {
+    public void setIsActiveSuRoot(String isActiveSuRoot) {
         this.isActiveSuRoot = isActiveSuRoot;
     }
 
-    @Column(name = "root_password", length = 100)
+    @Column(name = "root_password", length = 500, nullable = false)
     public String getRootPassword() {
         return rootPassword;
     }
@@ -129,7 +133,7 @@ public class MachineEntity {
         this.rootPassword = rootPassword;
     }
 
-    @Column(name = "root_cmd", length = 2000)
+    @Column(name = "root_cmd", length = 2000, nullable = false)
     public String getRootCmd() {
         return rootCmd;
     }
@@ -137,20 +141,43 @@ public class MachineEntity {
         this.rootCmd = rootCmd;
     }
 
-    @OneToMany(targetEntity=TagEntity.class, cascade=CascadeType.ALL, mappedBy="machine", fetch=FetchType.LAZY)
-    public List<TagEntity> getTags() {
-        return tags;
+    @Column(name = "description", length = 2000, nullable = false)
+    public String getDescription() {
+        return description;
     }
-    public void setTags(List<TagEntity> tags) {
-        this.tags = tags;
+    public void setDescription(String description) {
+        this.description = description;
     }
 
-    @ManyToOne(targetEntity=User.class, fetch=FetchType.LAZY)
-    @JoinColumn(name="user_id", referencedColumnName="id", nullable=false, foreignKey=@ForeignKey(name="fk_user_machines"))
-    public User getUser() {
-        return user;
+    @Column(name = "status", length = 100, nullable = false)
+    public String getStatus() {
+        return status;
     }
-    public void setUser(User user) {
-        this.user = user;
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    @Column(name = "row_key", length = 500, nullable = false)
+    public String getRowKey() {
+        return rowKey;
+    }
+    public void setRowKey(String rowKey) {
+        this.rowKey = rowKey;
+    }
+
+    @Column(name = "fingerprint", length = 6000, nullable = false)
+    public String getFingerprint() {
+        return fingerprint;
+    }
+    public void setFingerprint(String fingerprint) {
+        this.fingerprint = fingerprint;
+    }
+
+    @Column(name = "user_id", length = 500, nullable = false)
+    public String getUserId() {
+        return userId;
+    }
+    public void setUserId(String userId) {
+        this.userId = userId;
     }
 }

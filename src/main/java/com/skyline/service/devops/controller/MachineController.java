@@ -5,8 +5,8 @@ import com.skyline.platform.core.model.ResponseModel;
 import com.skyline.platform.core.model.ResponseStatus;
 import com.skyline.platform.core.service.UserService;
 import com.skyline.service.devops.entity.MachineEntity;
-import com.skyline.service.devops.entity.TagEntity;
 import com.skyline.service.devops.service.MachineService;
+import com.skyline.service.devops.service.TagService;
 import com.skyline.util.StringUtil;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
@@ -28,6 +28,8 @@ public class MachineController extends BaseController {
     MachineService machineService;
     @Autowired
     UserService userService;
+    @Autowired
+    TagService tagService;
 
     Logger logger = LoggerFactory.getLogger(MachineController.class);
 
@@ -91,7 +93,12 @@ public class MachineController extends BaseController {
             tags.add(tag);
         }
 
-        return doIt(machineService.addMachine(loginType, ip, port, loginUser, loginPassword, loginCmd, activeSudoRoot, activeSuRoot, rootPassword, rootCmd, tags));
+        try {
+            return doIt(machineService.addMachine(loginType, ip, port, loginUser, loginPassword, loginCmd, activeSudoRoot, activeSuRoot, rootPassword, rootCmd, "", tags));
+        } catch (Exception e) {
+            logger.error(StringUtil.getExceptionStackTraceMessage(e));
+            return new ResponseModel(ResponseStatus.OPERATION_ERROR);
+        }
     }
 
     @RequestMapping(value = {"/security/getAllMachine.do"}, produces = {"application/json;charset=UTF-8"}, method = {RequestMethod.POST})
@@ -102,10 +109,10 @@ public class MachineController extends BaseController {
         else machines = machineService.getCurrentUserAllMachine();
         JSONArray result = new JSONArray();
         for (MachineEntity machine : machines) {
-            List<TagEntity> tags = machine.getTags();
+            List<String> tags =  tagService.getTagNameByMachineId(machine.getId());
             String str_tags = "";
-            for (TagEntity tag : tags) {
-                str_tags += tag.getName() + ",";
+            for (String tag : tags) {
+                str_tags += tag + ",";
             }
             if (str_tags.length() > 0) {
                 str_tags = str_tags.substring(0, str_tags.length() - 1);
@@ -116,7 +123,7 @@ public class MachineController extends BaseController {
             json.put("sshPort", machine.getSshPort());
             json.put("loginUser", machine.getLoginUser());
             json.put("tags", str_tags);
-            if (isAdminUser) json.put("belong", machine.getUser().getUsername());
+            if (isAdminUser) json.put("belong", machineService.getMachineUser(machine.getId()));
             result.add(json);
         }
         return new ResponseModel(result);
