@@ -44,7 +44,6 @@ public class MachineService {
 
         //获取登陆用户信息
         User user = userService.getCurrentUser();
-        String userId = user.getId();
 
         //检查机器是否已经存在
         List<MachineEntity> machineEntitys = machineDao.findByIp(ip);
@@ -87,7 +86,7 @@ public class MachineService {
                 loginType,
                 logingUser,
                 loginPassword,
-                userId);
+                user.getId());
         machine.setLoginUserCmd(loginCmd);
         machine.setIsActiveSudoRoot(String.valueOf(activeSudoRoot));
         machine.setIsActiveSuRoot(String.valueOf(activeSuRoot));
@@ -95,15 +94,16 @@ public class MachineService {
         machine.setRootCmd(rootCmd);
         machine.setDescription(desc);
         machine.setStatus("normal");
-        //machineDao.save(machine);
+
+        String rowKey = String.valueOf(new Random().nextDouble());
         try {
-            lockMachineInfo(machine, "123242432443243");
+            lockMachineInfo(machine, rowKey, "123242432443243");
         } catch (Exception e) {
             throw new Exception("Lock machine info failed.");
         }
         machineDao.save(machine);
         for (String tag : tags) {
-            TagEntity tagEntity = new TagEntity(tag, userId);
+            TagEntity tagEntity = new TagEntity(tag, SecurityUtil.desEncrpt(machine.getId(), rowKey));
             tagDao.save(tagEntity);
         }
         return true;
@@ -124,9 +124,7 @@ public class MachineService {
         return new User();
     }
 
-    private void lockMachineInfo(MachineEntity machineEntity, String key) throws Exception {
-        String rowKey = String.valueOf(new Random().nextDouble());
-//        machineEntity.setId(SecurityUtil.desEncrpt(machineEntity.getId(), rowKey));
+    private void lockMachineInfo(MachineEntity machineEntity, String rowKey, String key) throws Exception {
         machineEntity.setIp(SecurityUtil.desEncrpt(machineEntity.getIp(), rowKey));
         machineEntity.setSshPort(SecurityUtil.desEncrpt(machineEntity.getSshPort(), rowKey));
         machineEntity.setLoginType(SecurityUtil.desEncrpt(machineEntity.getLoginType(), rowKey));
@@ -180,8 +178,6 @@ public class MachineService {
                 + machineEntity.getDescription()
                 + machineEntity.getStatus()
                 + machineEntity.getRowKey();
-
-        System.out.println(fingerprint + "--------");
 
         machineEntity.setFingerprint(SecurityUtil.Md5(SecurityUtil.desEncrpt(fingerprint, key)));
     }
