@@ -6,7 +6,6 @@ import com.skyline.platform.core.model.ResponseStatus;
 import com.skyline.platform.core.service.UserService;
 import com.skyline.service.devops.entity.MachineEntity;
 import com.skyline.service.devops.service.MachineService;
-import com.skyline.service.devops.service.TagService;
 import com.skyline.util.StringUtil;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
@@ -18,7 +17,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,8 +26,6 @@ public class MachineController extends BaseController {
     MachineService machineService;
     @Autowired
     UserService userService;
-    @Autowired
-    TagService tagService;
 
     Logger logger = LoggerFactory.getLogger(MachineController.class);
 
@@ -105,26 +101,32 @@ public class MachineController extends BaseController {
     public ResponseModel getAllMachine() {
         boolean isAdminUser = userService.hasRole("admin");
         List<MachineEntity> machines;
-        if (isAdminUser)  machines = machineService.getAllMachine();
-        else machines = machineService.getCurrentUserAllMachine();
         JSONArray result = new JSONArray();
-        for (MachineEntity machine : machines) {
-            List<String> tags =  tagService.getTagNameByMachineId(machine.getId());
-            String str_tags = "";
-            for (String tag : tags) {
-                str_tags += tag + ",";
-            }
-            if (str_tags.length() > 0) {
-                str_tags = str_tags.substring(0, str_tags.length() - 1);
-            }
+        try {
 
-            JSONObject json = new JSONObject();
-            json.put("ip", machine.getIp());
-            json.put("sshPort", machine.getSshPort());
-            json.put("loginUser", machine.getLoginUser());
-            json.put("tags", str_tags);
-            if (isAdminUser) json.put("belong", machineService.getMachineUser(machine.getId()));
-            result.add(json);
+            if (isAdminUser) machines = machineService.getAllMachine();
+            else machines = machineService.getCurrentUserAllMachine();
+            for (MachineEntity machine : machines) {
+                List<String> tags = machineService.getMachineTagNames(machine.getId());
+                String str_tags = "";
+                for (String tag : tags) {
+                    str_tags += tag + ",";
+                }
+                if (str_tags.length() > 0) {
+                    str_tags = str_tags.substring(0, str_tags.length() - 1);
+                }
+
+                JSONObject json = new JSONObject();
+                json.put("ip", machine.getIp());
+                json.put("sshPort", machine.getSshPort());
+                json.put("loginUser", machine.getLoginUser());
+                json.put("tags", str_tags);
+                if (isAdminUser) json.put("belong", machineService.getMachineUser(machine.getId()));
+                result.add(json);
+            }
+        } catch (Exception e) {
+            logger.error(StringUtil.getExceptionStackTraceMessage(e));
+            return new ResponseModel(ResponseStatus.OPERATION_ERROR);
         }
         return new ResponseModel(result);
     }

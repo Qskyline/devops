@@ -136,6 +136,16 @@ public class MachineService {
         return user.get();
     }
 
+    public List<String> getMachineTagNames(String machineId) throws Exception {
+        machineId = SecurityUtil.desDecrpt(machineId, desKey);
+        List<TagEntity> tagEntities =tagDao.findByMachineId(machineId);
+        ArrayList<String> result = new ArrayList<>();
+        for (TagEntity tag : tagEntities) {
+            result.add(tag.getName());
+        }
+        return result;
+    }
+
     private void lockMachineInfo(MachineEntity machineEntity, String key) throws Exception {
         String rowKey = String.valueOf(new Random().nextDouble());
 
