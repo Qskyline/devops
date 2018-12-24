@@ -95,15 +95,14 @@ public class MachineService {
         machine.setDescription(desc);
         machine.setStatus("normal");
 
-        String rowKey = String.valueOf(new Random().nextDouble());
         try {
-            lockMachineInfo(machine, rowKey, "123242432443243");
+            lockMachineInfo(machine, "123242432443243");
         } catch (Exception e) {
             throw new Exception("Lock machine info failed.");
         }
         machineDao.save(machine);
         for (String tag : tags) {
-            TagEntity tagEntity = new TagEntity(tag, SecurityUtil.desEncrpt(machine.getId(), rowKey));
+            TagEntity tagEntity = new TagEntity(tag, SecurityUtil.desEncrpt(machine.getId(), "123242432443243"));
             tagDao.save(tagEntity);
         }
         return true;
@@ -124,7 +123,9 @@ public class MachineService {
         return new User();
     }
 
-    private void lockMachineInfo(MachineEntity machineEntity, String rowKey, String key) throws Exception {
+    private void lockMachineInfo(MachineEntity machineEntity, String key) throws Exception {
+        String rowKey = String.valueOf(new Random().nextDouble());
+
         machineEntity.setIp(SecurityUtil.desEncrpt(machineEntity.getIp(), rowKey));
         machineEntity.setSshPort(SecurityUtil.desEncrpt(machineEntity.getSshPort(), rowKey));
         machineEntity.setLoginType(SecurityUtil.desEncrpt(machineEntity.getLoginType(), rowKey));
