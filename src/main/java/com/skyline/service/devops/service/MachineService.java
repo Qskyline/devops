@@ -187,8 +187,7 @@ public class MachineService {
         machineEntity.setRowKey(SecurityUtil.desEncrpt(rowKey, key));
 
         String fingerprint =
-                machineEntity.getId()
-                + machineEntity.getIp()
+                machineEntity.getIp()
                 + machineEntity.getSshPort()
                 + machineEntity.getLoginType()
                 + machineEntity.getLoginUser()
@@ -208,21 +207,20 @@ public class MachineService {
 
     private boolean parseMachineInfo(MachineEntity machineEntity, String key) throws Exception {
         String fingerprint =
-                machineEntity.getId()
-                        + machineEntity.getIp()
-                        + machineEntity.getSshPort()
-                        + machineEntity.getLoginType()
-                        + machineEntity.getLoginUser()
-                        + machineEntity.getLoginPassword()
-                        + machineEntity.getUserId()
-                        + machineEntity.getLoginUserCmd()
-                        + machineEntity.getIsActiveSudoRoot()
-                        + machineEntity.getIsActiveSuRoot()
-                        + machineEntity.getRootPassword()
-                        + machineEntity.getRootCmd()
-                        + machineEntity.getDescription()
-                        + machineEntity.getStatus()
-                        + machineEntity.getRowKey();
+                machineEntity.getIp()
+                + machineEntity.getSshPort()
+                + machineEntity.getLoginType()
+                + machineEntity.getLoginUser()
+                + machineEntity.getLoginPassword()
+                + machineEntity.getUserId()
+                + machineEntity.getLoginUserCmd()
+                + machineEntity.getIsActiveSudoRoot()
+                + machineEntity.getIsActiveSuRoot()
+                + machineEntity.getRootPassword()
+                + machineEntity.getRootCmd()
+                + machineEntity.getDescription()
+                + machineEntity.getStatus()
+                + machineEntity.getRowKey();
 
         String fingerprint_check = SecurityUtil.Md5(SecurityUtil.desEncrpt(fingerprint, key));
         if (!fingerprint_check.equals(machineEntity.getFingerprint())) {
