@@ -113,13 +113,13 @@ public class MachineService {
         return true;
     }
 
-    @Transactional
+//    @Transactional
     public List<MachineEntity> getAllMachine() throws Exception {
         List<MachineEntity> machines = machineDao.findAll();
         return parseMachineInfo(machines, desKey);
     }
 
-    @Transactional
+//    @Transactional
     public List<MachineEntity> getCurrentUserAllMachine() throws Exception {
         User user = userService.getCurrentUser();
         List<MachineEntity> machines = machineDao.findByUserId(SecurityUtil.desDecrpt(user.getId(),desKey));
@@ -137,7 +137,7 @@ public class MachineService {
     }
 
     public List<String> getMachineTagNames(String machineId) throws Exception {
-        machineId = SecurityUtil.desDecrpt(machineId, desKey);
+        machineId = SecurityUtil.desEncrpt(machineId, desKey);
         List<TagEntity> tagEntities =tagDao.findByMachineId(machineId);
         ArrayList<String> result = new ArrayList<>();
         for (TagEntity tag : tagEntities) {
