@@ -2,7 +2,7 @@ package com.skyline.service.devops.service;
 
 import com.skyline.service.devops.Devops;
 import com.skyline.service.devops.MySpringJUnit4ClassRunner;
-import com.skyline.service.devops.entity.MachineEntity;
+import org.dom4j.DocumentException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,5 +20,14 @@ public class MachineServiceTest {
 
     @Test
     public void getAllMachine() {
+    }
+
+    @Test
+    public void importMachineInfoFromKeypass() {
+        try {
+            machineService.importMachineInfoFromKeypass("file:///Users/skyline/Downloads/kdngproduct.xml", "asdadasd");
+        } catch (DocumentException e) {
+            e.printStackTrace();
+        }
     }
 }

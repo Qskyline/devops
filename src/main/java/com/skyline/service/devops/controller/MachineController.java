@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -129,5 +130,11 @@ public class MachineController extends BaseController {
             return new ResponseModel(ResponseStatus.OPERATION_ERROR);
         }
         return new ResponseModel(result);
+    }
+
+    @RequestMapping(value = {"/security/getAllTag.do"}, produces = {"application/json;charset=UTF-8"}, method = {RequestMethod.POST})
+    public ResponseModel getAllTag() {
+        String[] tags = new String[] {"redis", "zookeeper", "mysql", "mesos", "kbs", "rabbitmq", "marathon", "etcd", "elasticsearch", "kafka", "zipkin", "logstash"};
+        return new ResponseModel(tags);
     }
 }

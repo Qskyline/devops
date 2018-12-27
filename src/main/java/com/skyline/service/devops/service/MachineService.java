@@ -9,11 +9,16 @@ import com.skyline.service.devops.entity.MachineEntity;
 import com.skyline.service.devops.entity.TagEntity;
 import com.skyline.util.SecurityUtil;
 import org.apache.commons.lang.StringUtils;
+import org.dom4j.Document;
+import org.dom4j.DocumentException;
+import org.dom4j.Element;
+import org.dom4j.io.SAXReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -270,5 +275,51 @@ public class MachineService {
             if (parseMachineInfo(machine, key)) result.add(machine);
         }
         return result;
+    }
+
+    public void importMachineInfoFromKeypass(String url, String userId) throws DocumentException {
+        ArrayList<String> groupNames = new ArrayList<>();
+        groupNames.add("kingdee-product");
+        groupNames.add("shenzhen-dmz");
+        groupNames.add("neiwang");
+        groupNames.add("huaweiyun");
+
+        ArrayList<MachineEntity> machineEntities = new ArrayList<>();
+
+        SAXReader reader = new SAXReader();
+        Document doc = reader.read(url);
+        List<Element> groups = doc.getRootElement().element("Root").element("Group").elements("Group");
+        for (Element group : groups) {
+            for (String groupName : groupNames) {
+                if (group.element("Name").getText().equals(groupName)) {
+                    System.out.println("====================" + group.element("Name").getText() + "====================");
+                    List<Element> entrys = group.elements("Entry");
+                    for (Element e : entrys) {
+                        List<Element> temp = e.elements("String");
+                        String desc = null;
+                        String ip = null;
+                        String password = null;
+                        String port = null;
+                        String user = null;
+                        for (Element t : temp) {
+                            String key = t.element("Key").getText();
+                            if (key.equals("Notes")) {
+                                desc = t.element("Value").getText();
+                            } else if (key.equals("Password")) {
+                                password = t.element("Value").getText();
+                            } else if (key.equals("Title")) {
+                                ip = t.element("Value").getText();
+                            } else if (key.equals("URL")) {
+                                port = t.element("Value").getText();
+                            } else if (key.equals("UserName")) {
+                                user = t.element("Value").getText();
+                            }
+                        }
+                        if (StringUtils.isEmpty(ip) || StringUtils.isEmpty(password) || StringUtils.isEmpty(port) || StringUtils.isEmpty(user)) continue;
+
+                    }
+                }
+            }
+        }
     }
 }
