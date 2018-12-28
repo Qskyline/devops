@@ -4,7 +4,7 @@ import com.skyline.platform.core.controller.BaseController;
 import com.skyline.platform.core.model.ResponseModel;
 import com.skyline.platform.core.model.ResponseStatus;
 import com.skyline.platform.core.service.UserService;
-import com.skyline.service.devops.entity.MachineEntity;
+import com.skyline.service.devops.entity.MachineInfoDecrypt;
 import com.skyline.service.devops.service.MachineService;
 import com.skyline.util.StringUtil;
 import net.sf.json.JSONArray;
@@ -105,30 +105,19 @@ public class MachineController extends BaseController {
     @RequestMapping(value = {"/security/getAllMachine.do"}, produces = {"application/json;charset=UTF-8"}, method = {RequestMethod.POST})
     public ResponseModel getAllMachine() {
         boolean isAdminUser = userService.hasRole("admin");
-        List<MachineEntity> machines;
+        List<MachineInfoDecrypt> machines;
         JSONArray result = new JSONArray();
         try {
 
             if (isAdminUser) machines = machineService.getAllMachine();
             else machines = machineService.getCurrentUserAllMachine();
-            for (MachineEntity machine : machines) {
-                List<String> tags = machineService.getMachineTagNames(machine.getId());
-                String str_tags = "";
-                if (tags != null && tags.size() > 0) {
-                    for (String tag : tags) {
-                        str_tags += tag + ",";
-                    }
-                }
-                if (str_tags.length() > 0) {
-                    str_tags = str_tags.substring(0, str_tags.length() - 1);
-                }
-
+            for (MachineInfoDecrypt machine : machines) {
                 JSONObject json = new JSONObject();
                 json.put("ip", machine.getIp());
                 json.put("sshPort", machine.getSshPort());
                 json.put("loginUser", machine.getLoginUser());
-                json.put("tags", str_tags);
-                if (isAdminUser) json.put("belong", machineService.getMachineUser(machine.getId()));
+                json.put("tags", machine.getTags());
+                if (isAdminUser) json.put("belong", machine.getUser().getUsername());
                 result.add(json);
             }
         } catch (Exception e) {

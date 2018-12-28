@@ -6,8 +6,10 @@ import com.skyline.platform.core.service.UserService;
 import com.skyline.service.devops.dao.MachineDao;
 import com.skyline.service.devops.dao.TagDao;
 import com.skyline.service.devops.entity.MachineEntity;
+import com.skyline.service.devops.entity.MachineInfoDecrypt;
 import com.skyline.service.devops.entity.TagEntity;
 import com.skyline.util.SecurityUtil;
+import com.skyline.util.StringUtil;
 import org.apache.commons.lang.StringUtils;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
@@ -92,13 +94,13 @@ public class MachineService {
         }
 
         //添加机器
-        MachineEntity machine = new MachineEntity(
+        MachineInfoDecrypt machine = new MachineInfoDecrypt(
                 ip,
                 String.valueOf(port),
                 loginType,
                 logingUser,
                 loginPassword,
-                user.getId());
+                user);
         machine.setLoginUserCmd(loginCmd);
         machine.setIsActiveSudoRoot(String.valueOf(activeSudoRoot));
         machine.setIsActiveSuRoot(String.valueOf(activeSuRoot));
@@ -107,97 +109,105 @@ public class MachineService {
         machine.setDescription(desc);
         machine.setStatus("normal");
 
-        try {
-            lockMachineInfo(machine, desKey);
-        } catch (Exception e) {
-            throw new Exception("Lock machine info failed.");
+        MachineEntity machineEntity = lockMachineInfo(machine, desKey);
+        if (machineEntity == null) {
+            logger.error("Lock machine info failed.");
+            return false;
         }
-        machineDao.save(machine);
+
+        machineDao.save(machineEntity);
         if (tags != null && tags.size() > 0) {
             for (String tag : tags) {
-                TagEntity tagEntity = new TagEntity(tag, SecurityUtil.desEncrpt(machine.getId(), desKey));
+                TagEntity tagEntity = new TagEntity(tag, SecurityUtil.desEncrpt(machineEntity.getId(), desKey));
                 tagDao.save(tagEntity);
             }
         }
         return true;
     }
 
-    public List<MachineEntity> getAllMachine() throws Exception {
+    public List<MachineInfoDecrypt> getAllMachine() {
         List<MachineEntity> machines = machineDao.findAll();
         return parseMachineInfo(machines, desKey);
     }
 
-    public List<MachineEntity> getCurrentUserAllMachine() throws Exception {
+    public List<MachineInfoDecrypt> getCurrentUserAllMachine() {
         User user = userService.getCurrentUser();
-        List<MachineEntity> machines = parseMachineInfo(machineDao.findAll(), desKey);
-        ArrayList<MachineEntity> result = new ArrayList<>();
-        for (MachineEntity machine : machines) {
-            if (machine.getUserId().equals(user.getId())) result.add(machine);
+        List<MachineInfoDecrypt> machines = parseMachineInfo(machineDao.findAll(), desKey);
+        ArrayList<MachineInfoDecrypt> result = new ArrayList<>();
+        for (MachineInfoDecrypt machine : machines) {
+            if (machine.getUser().getId().equals(user.getId())) result.add(machine);
         }
         return result;
     }
 
-    public User getMachineUser(String machineId) throws Exception {
-        Optional<MachineEntity> machine = machineDao.findById(machineId);
-        if (!machine.isPresent()) return null;
-        if (!parseMachineInfo(machine.get(), desKey)) return null;
-        String userId = machine.get().getUserId();
-        Optional<User> user = userDao.findById(userId);
-        if (!user.isPresent()) return null;
-        return user.get();
-    }
+    private MachineEntity lockMachineInfo(MachineInfoDecrypt machineInfoDecrypt, String key) {
+        MachineEntity machineEntity = new MachineEntity();
 
-    public List<String> getMachineTagNames(String machineId) throws Exception {
-        machineId = SecurityUtil.desEncrpt(machineId, desKey);
-        List<TagEntity> tagEntities =tagDao.findByMachineId(machineId);
-        if (tagEntities == null || tagEntities.size() <= 0) return null;
-        ArrayList<String> result = new ArrayList<>();
-        for (TagEntity tag : tagEntities) {
-            result.add(tag.getName());
+        try {
+            String rowKey = String.valueOf(new Random().nextDouble());
+
+            machineEntity.setIp(SecurityUtil.desEncrpt(machineInfoDecrypt.getIp(), rowKey));
+            machineEntity.setSshPort(SecurityUtil.desEncrpt(machineInfoDecrypt.getSshPort(), rowKey));
+            machineEntity.setLoginType(SecurityUtil.desEncrpt(machineInfoDecrypt.getLoginType(), rowKey));
+            machineEntity.setLoginUser(SecurityUtil.desEncrpt(machineInfoDecrypt.getLoginUser(), rowKey));
+            machineEntity.setLoginPassword(SecurityUtil.desEncrpt(machineInfoDecrypt.getLoginPassword(), rowKey));
+            machineEntity.setUserId(SecurityUtil.desEncrpt(machineInfoDecrypt.getUser().getId(), rowKey));
+
+            String defaultValue = machineInfoDecrypt.getLoginUserCmd();
+            if (StringUtils.isEmpty(defaultValue)) defaultValue = "q-null";
+            machineEntity.setLoginUserCmd(SecurityUtil.desEncrpt(defaultValue, rowKey));
+
+            defaultValue = machineInfoDecrypt.getIsActiveSudoRoot();
+            if (StringUtils.isEmpty(defaultValue)) defaultValue = "false";
+            machineEntity.setIsActiveSudoRoot(SecurityUtil.desEncrpt(defaultValue, rowKey));
+
+            defaultValue = machineInfoDecrypt.getIsActiveSuRoot();
+            if (StringUtils.isEmpty(defaultValue)) defaultValue = "false";
+            machineEntity.setIsActiveSuRoot(SecurityUtil.desEncrpt(defaultValue, rowKey));
+
+            defaultValue = machineInfoDecrypt.getRootPassword();
+            if (StringUtils.isEmpty(defaultValue)) defaultValue = "q-null";
+            machineEntity.setRootPassword(SecurityUtil.desEncrpt(defaultValue, rowKey));
+
+            defaultValue = machineInfoDecrypt.getRootCmd();
+            if (StringUtils.isEmpty(defaultValue)) defaultValue = "q-null";
+            machineEntity.setRootCmd(SecurityUtil.desEncrpt(defaultValue, rowKey));
+
+            defaultValue = machineInfoDecrypt.getDescription();
+            if (StringUtils.isEmpty(defaultValue)) defaultValue = "q-null";
+            machineEntity.setDescription(SecurityUtil.desEncrpt(defaultValue, rowKey));
+
+            defaultValue = machineInfoDecrypt.getStatus();
+            if (StringUtils.isEmpty(defaultValue)) defaultValue = "normal";
+            machineEntity.setStatus(SecurityUtil.desEncrpt(defaultValue, rowKey));
+
+            machineEntity.setRowKey(SecurityUtil.desEncrpt(rowKey, key));
+
+            String fingerprint =
+                    machineEntity.getIp()
+                            + machineEntity.getSshPort()
+                            + machineEntity.getLoginType()
+                            + machineEntity.getLoginUser()
+                            + machineEntity.getLoginPassword()
+                            + machineEntity.getUserId()
+                            + machineEntity.getLoginUserCmd()
+                            + machineEntity.getIsActiveSudoRoot()
+                            + machineEntity.getIsActiveSuRoot()
+                            + machineEntity.getRootPassword()
+                            + machineEntity.getRootCmd()
+                            + machineEntity.getDescription()
+                            + machineEntity.getStatus()
+                            + machineEntity.getRowKey();
+
+            machineEntity.setFingerprint(SecurityUtil.Md5(SecurityUtil.desEncrpt(fingerprint, key)));
+        } catch (Exception e) {
+            logger.error(StringUtil.getExceptionStackTraceMessage(e));
+            return null;
         }
-        return result;
+        return machineEntity;
     }
 
-    private void lockMachineInfo(MachineEntity machineEntity, String key) throws Exception {
-        String rowKey = String.valueOf(new Random().nextDouble());
-
-        machineEntity.setIp(SecurityUtil.desEncrpt(machineEntity.getIp(), rowKey));
-        machineEntity.setSshPort(SecurityUtil.desEncrpt(machineEntity.getSshPort(), rowKey));
-        machineEntity.setLoginType(SecurityUtil.desEncrpt(machineEntity.getLoginType(), rowKey));
-        machineEntity.setLoginUser(SecurityUtil.desEncrpt(machineEntity.getLoginUser(), rowKey));
-        machineEntity.setLoginPassword(SecurityUtil.desEncrpt(machineEntity.getLoginPassword(), rowKey));
-        machineEntity.setUserId(SecurityUtil.desEncrpt(machineEntity.getUserId(), rowKey));
-
-        String defaultValue = "q-null";
-        if (StringUtils.isEmpty(machineEntity.getLoginUserCmd())) machineEntity.setLoginUserCmd(defaultValue);
-        machineEntity.setLoginUserCmd(SecurityUtil.desEncrpt(machineEntity.getLoginUserCmd(), rowKey));
-
-        defaultValue = "false";
-        if (StringUtils.isEmpty(machineEntity.getIsActiveSudoRoot())) machineEntity.setIsActiveSudoRoot(defaultValue);
-        machineEntity.setIsActiveSudoRoot(SecurityUtil.desEncrpt(machineEntity.getIsActiveSudoRoot(), rowKey));
-
-        defaultValue = "false";
-        if (StringUtils.isEmpty(machineEntity.getIsActiveSuRoot())) machineEntity.setIsActiveSuRoot(defaultValue);
-        machineEntity.setIsActiveSuRoot(SecurityUtil.desEncrpt(machineEntity.getIsActiveSuRoot(), rowKey));
-
-        defaultValue = "q-null";
-        if (StringUtils.isEmpty(machineEntity.getRootPassword())) machineEntity.setRootPassword(defaultValue);
-        machineEntity.setRootPassword(SecurityUtil.desEncrpt(machineEntity.getRootPassword(), rowKey));
-
-        defaultValue = "q-null";
-        if (StringUtils.isEmpty(machineEntity.getRootCmd())) machineEntity.setRootCmd(defaultValue);
-        machineEntity.setRootCmd(SecurityUtil.desEncrpt(machineEntity.getRootCmd(), rowKey));
-
-        defaultValue = "q-null";
-        if (StringUtils.isEmpty(machineEntity.getDescription())) machineEntity.setDescription(defaultValue);
-        machineEntity.setDescription(SecurityUtil.desEncrpt(machineEntity.getDescription(), rowKey));
-
-        defaultValue = "normal";
-        if (StringUtils.isEmpty(machineEntity.getStatus())) machineEntity.setStatus(defaultValue);
-        machineEntity.setStatus(SecurityUtil.desEncrpt(machineEntity.getStatus(), rowKey));
-
-        machineEntity.setRowKey(SecurityUtil.desEncrpt(rowKey, key));
-
+    private MachineInfoDecrypt parseMachineInfo(MachineEntity machineEntity, String key) {
         String fingerprint =
                 machineEntity.getIp()
                 + machineEntity.getSshPort()
@@ -214,70 +224,78 @@ public class MachineService {
                 + machineEntity.getStatus()
                 + machineEntity.getRowKey();
 
-        machineEntity.setFingerprint(SecurityUtil.Md5(SecurityUtil.desEncrpt(fingerprint, key)));
-    }
+        MachineInfoDecrypt machineInfoDecrypt = new MachineInfoDecrypt();
+        try {
+            //校验数据准确性
+            String fingerprint_check = SecurityUtil.Md5(SecurityUtil.desEncrpt(fingerprint, key));
+            if (!fingerprint_check.equals(machineEntity.getFingerprint())) {
+                logger.error("Detective illegal MachineInfo Changing! The machineId is {}", machineEntity.getId());
+                return null;
+            }
 
-    private boolean parseMachineInfo(MachineEntity machineEntity, String key) throws Exception {
-        String fingerprint =
-                machineEntity.getIp()
-                + machineEntity.getSshPort()
-                + machineEntity.getLoginType()
-                + machineEntity.getLoginUser()
-                + machineEntity.getLoginPassword()
-                + machineEntity.getUserId()
-                + machineEntity.getLoginUserCmd()
-                + machineEntity.getIsActiveSudoRoot()
-                + machineEntity.getIsActiveSuRoot()
-                + machineEntity.getRootPassword()
-                + machineEntity.getRootCmd()
-                + machineEntity.getDescription()
-                + machineEntity.getStatus()
-                + machineEntity.getRowKey();
+            //解密
+            String rowKey = SecurityUtil.desDecrpt(machineEntity.getRowKey(), key);
 
-        String fingerprint_check = SecurityUtil.Md5(SecurityUtil.desEncrpt(fingerprint, key));
-        if (!fingerprint_check.equals(machineEntity.getFingerprint())) {
-            logger.error("Detective illegal MachineInfo Changing! The machineId is {}", machineEntity.getId());
-            return false;
+            machineInfoDecrypt.setIp(SecurityUtil.desDecrpt(machineEntity.getIp(), rowKey));
+            machineInfoDecrypt.setSshPort(SecurityUtil.desDecrpt(machineEntity.getSshPort(), rowKey));
+            machineInfoDecrypt.setLoginType(SecurityUtil.desDecrpt(machineEntity.getLoginType(), rowKey));
+            machineInfoDecrypt.setLoginUser(SecurityUtil.desDecrpt(machineEntity.getLoginUser(), rowKey));
+            machineInfoDecrypt.setLoginPassword(SecurityUtil.desDecrpt(machineEntity.getLoginPassword(), rowKey));
+            String userId = SecurityUtil.desDecrpt(machineEntity.getUserId(), rowKey);
+            Optional<User> user = userDao.findById(userId);
+            if (!user.isPresent()) {
+                throw new Exception("Can not fetch the Machine User");
+            }
+            machineInfoDecrypt.setUser(user.get());
+
+            String loginUserCmd = SecurityUtil.desDecrpt(machineEntity.getLoginUserCmd(), rowKey);
+            if (loginUserCmd.equals("q-null")) loginUserCmd = null;
+            machineInfoDecrypt.setLoginUserCmd(loginUserCmd);
+
+            machineInfoDecrypt.setIsActiveSudoRoot(SecurityUtil.desDecrpt(machineEntity.getIsActiveSudoRoot(), rowKey));
+            machineInfoDecrypt.setIsActiveSuRoot(SecurityUtil.desDecrpt(machineEntity.getIsActiveSuRoot(), rowKey));
+
+            String rootPassword = SecurityUtil.desDecrpt(machineEntity.getRootPassword(), rowKey);
+            if (rootPassword.equals("q-null")) rootPassword = null;
+            machineInfoDecrypt.setRootPassword(rootPassword);
+
+            String rootCmd = SecurityUtil.desDecrpt(machineEntity.getRootCmd(), rowKey);
+            if (rootCmd.equals("q-null")) rootCmd = null;
+            machineInfoDecrypt.setRootCmd(rootCmd);
+
+            String description = SecurityUtil.desDecrpt(machineEntity.getDescription(), rowKey);
+            if (description.equals("q-null")) description = null;
+            machineInfoDecrypt.setDescription(description);
+
+            machineInfoDecrypt.setStatus(SecurityUtil.desDecrpt(machineEntity.getStatus(), rowKey));
+
+            String machineId = SecurityUtil.desEncrpt(machineEntity.getId(), key);
+            List<TagEntity> tagEntities =tagDao.findByMachineId(machineId);
+            String tags = "";
+            if (tagEntities != null && tagEntities.size() > 0) {
+                for (TagEntity tag : tagEntities) {
+                    tags += (tag.getName() + ",");
+                }
+            }
+            if (!StringUtils.isEmpty(tags)) {
+                tags = tags.substring(0, tags.length() - 1);
+            } else {
+                tags = null;
+            }
+            machineInfoDecrypt.setTags(tags);
+        } catch (Exception e) {
+            logger.error(StringUtil.getExceptionStackTraceMessage(e));
+            return null;
         }
 
-        String rowKey = SecurityUtil.desDecrpt(machineEntity.getRowKey(), key);
-        machineEntity.setRowKey(rowKey);
-
-        machineEntity.setIp(SecurityUtil.desDecrpt(machineEntity.getIp(), rowKey));
-        machineEntity.setSshPort(SecurityUtil.desDecrpt(machineEntity.getSshPort(), rowKey));
-        machineEntity.setLoginType(SecurityUtil.desDecrpt(machineEntity.getLoginType(), rowKey));
-        machineEntity.setLoginUser(SecurityUtil.desDecrpt(machineEntity.getLoginUser(), rowKey));
-        machineEntity.setLoginPassword(SecurityUtil.desDecrpt(machineEntity.getLoginPassword(), rowKey));
-        machineEntity.setUserId(SecurityUtil.desDecrpt(machineEntity.getUserId(), rowKey));
-
-        String loginUserCmd = SecurityUtil.desDecrpt(machineEntity.getLoginUserCmd(), rowKey);
-        if (loginUserCmd.equals("q-null")) loginUserCmd = null;
-        machineEntity.setLoginUserCmd(loginUserCmd);
-
-        machineEntity.setIsActiveSudoRoot(SecurityUtil.desDecrpt(machineEntity.getIsActiveSudoRoot(), rowKey));
-        machineEntity.setIsActiveSuRoot(SecurityUtil.desDecrpt(machineEntity.getIsActiveSuRoot(), rowKey));
-
-        String rootPassword = SecurityUtil.desDecrpt(machineEntity.getRootPassword(), rowKey);
-        if (rootPassword.equals("q-null")) rootPassword = null;
-        machineEntity.setRootPassword(rootPassword);
-
-        String rootCmd = SecurityUtil.desDecrpt(machineEntity.getRootCmd(), rowKey);
-        if (rootCmd.equals("q-null")) rootCmd = null;
-        machineEntity.setRootCmd(rootCmd);
-
-        String description = SecurityUtil.desDecrpt(machineEntity.getDescription(), rowKey);
-        if (description.equals("q-null")) description = null;
-        machineEntity.setDescription(description);
-
-       machineEntity.setStatus(SecurityUtil.desDecrpt(machineEntity.getStatus(), rowKey));
-
-       return true;
+       return machineInfoDecrypt;
     }
 
-    private List<MachineEntity> parseMachineInfo(List<MachineEntity> machines, String key) throws Exception {
-        ArrayList<MachineEntity> result = new ArrayList<>();
+    private List<MachineInfoDecrypt> parseMachineInfo(List<MachineEntity> machines, String key) {
+        ArrayList<MachineInfoDecrypt> result = new ArrayList<>();
         for (MachineEntity machine : machines) {
-            if (parseMachineInfo(machine, key)) result.add(machine);
+            MachineInfoDecrypt machineInfoDecrypt = parseMachineInfo(machine, key);
+            if (machineInfoDecrypt != null) result.add(machineInfoDecrypt);
         }
         return result;
     }
