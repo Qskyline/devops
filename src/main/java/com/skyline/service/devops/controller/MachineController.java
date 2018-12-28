@@ -76,18 +76,22 @@ public class MachineController extends BaseController {
                 || StringUtils.isBlank(ip)
                 || StringUtils.isBlank(loginUser)
                 || StringUtils.isBlank(loginPassword)
-                || port < 22
-                || StringUtils.isBlank(param_tags)) {
+                || port < 22) {
             String errMsg = "Can not fetch enough params.";
             logger.error(errMsg);
             return new ResponseModel(ResponseStatus.OPERATION_ERROR_PARAMS,errMsg);
         }
 
-        String[] _tags = param_tags.split(",");
-        ArrayList tags = new ArrayList();
-        for (String tag : _tags) {
-            if (StringUtils.isBlank(tag)) continue;
-            tags.add(tag);
+        ArrayList<String> tags;
+        if (StringUtils.isEmpty(param_tags)) {
+            tags = null;
+        } else {
+            String[] _tags = param_tags.split(",");
+            tags = new ArrayList();
+            for (String tag : _tags) {
+                if (StringUtils.isEmpty(tag)) continue;
+                tags.add(tag);
+            }
         }
 
         try {
@@ -110,8 +114,10 @@ public class MachineController extends BaseController {
             for (MachineEntity machine : machines) {
                 List<String> tags = machineService.getMachineTagNames(machine.getId());
                 String str_tags = "";
-                for (String tag : tags) {
-                    str_tags += tag + ",";
+                if (tags != null && tags.size() > 0) {
+                    for (String tag : tags) {
+                        str_tags += tag + ",";
+                    }
                 }
                 if (str_tags.length() > 0) {
                     str_tags = str_tags.substring(0, str_tags.length() - 1);

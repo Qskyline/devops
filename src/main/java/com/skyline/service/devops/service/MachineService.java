@@ -62,7 +62,9 @@ public class MachineService {
             for (int i = 0; i< machineEntitys.size(); i++) {
                 MachineEntity machine = machineEntitys.get(i);
                 List<TagEntity> tagEntities = tagDao.findByMachineId(machine.getId());
-                if (tagEntities.size() == tags.size()) {
+                if ((tagEntities == null || tagEntities.size() == 0) && (tags == null || tags.size() == 0)) {
+                    isAlreadExist = true;
+                } else if (tags != null && tagEntities != null && tagEntities.size() == tags.size()) {
                     boolean flag = false;
                     for (String tag : tags) {
                         boolean isFind = false;
@@ -111,9 +113,11 @@ public class MachineService {
             throw new Exception("Lock machine info failed.");
         }
         machineDao.save(machine);
-        for (String tag : tags) {
-            TagEntity tagEntity = new TagEntity(tag, SecurityUtil.desEncrpt(machine.getId(), desKey));
-            tagDao.save(tagEntity);
+        if (tags != null && tags.size() > 0) {
+            for (String tag : tags) {
+                TagEntity tagEntity = new TagEntity(tag, SecurityUtil.desEncrpt(machine.getId(), desKey));
+                tagDao.save(tagEntity);
+            }
         }
         return true;
     }
@@ -146,6 +150,7 @@ public class MachineService {
     public List<String> getMachineTagNames(String machineId) throws Exception {
         machineId = SecurityUtil.desEncrpt(machineId, desKey);
         List<TagEntity> tagEntities =tagDao.findByMachineId(machineId);
+        if (tagEntities == null || tagEntities.size() <= 0) return null;
         ArrayList<String> result = new ArrayList<>();
         for (TagEntity tag : tagEntities) {
             result.add(tag.getName());
