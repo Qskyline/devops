@@ -33,53 +33,15 @@ public class MachineController extends BaseController {
     public ResponseModel addMachine(@RequestBody JSONObject args) {
         String loginType = (String) args.get("loginType");
         String ip = (String) args.get("ip");
-        String param_port = String.valueOf(args.get("loginPort"));
+        String port = String.valueOf(args.get("loginPort"));
         String loginUser = (String) args.get("loginUser");
         String loginPassword = (String) args.get("loginPassword");
         String loginCmd = (String) args.get("loginCmd");
-        String param_activeSudoRoot = (String) args.get("activeSudoRoot");
-        String param_activeSuRoot = (String) args.get("activeSuRoot");
+        String activeSudoRoot = (String) args.get("activeSudoRoot");
+        String activeSuRoot = (String) args.get("activeSuRoot");
         String rootPassword = (String) args.get("rootPassword");
         String rootCmd = (String) args.get("rootCmd");
         String param_tags = (String) args.get("tags");
-
-        int port = 0;
-        try {
-            if (StringUtils.isNotBlank(param_port)) {
-                port = Integer.valueOf(param_port);
-            }
-        } catch (Exception e) {
-            String errMsg =  "The \"port\" param must be numeric.";
-            logger.error(errMsg);
-            logger.error(StringUtil.getExceptionStackTraceMessage(e));
-            return new ResponseModel(ResponseStatus.OPERATION_ERROR_PARAMS, errMsg);
-        }
-
-        boolean activeSudoRoot = false;
-        boolean activeSuRoot = false;
-        try {
-            if(StringUtils.isNotBlank(param_activeSudoRoot)) {
-                activeSudoRoot = Boolean.valueOf(param_activeSudoRoot);
-            }
-            if(StringUtils.isNotBlank(param_activeSuRoot)) {
-                activeSuRoot = Boolean.valueOf(param_activeSuRoot);
-            }
-        } catch (Exception e) {
-            String errMsg = "The params \"activeSudoRoot\" and(or) \"activeSuRoot\" must be boolean.";
-            logger.error(errMsg);
-            logger.error(StringUtil.getExceptionStackTraceMessage(e));
-            return new ResponseModel(ResponseStatus.OPERATION_ERROR_PARAMS, errMsg);
-        }
-
-        if (StringUtils.isBlank(loginType)
-                || StringUtils.isBlank(ip)
-                || StringUtils.isBlank(loginUser)
-                || StringUtils.isBlank(loginPassword)
-                || port < 22) {
-            String errMsg = "Can not fetch enough params.";
-            logger.error(errMsg);
-            return new ResponseModel(ResponseStatus.OPERATION_ERROR_PARAMS,errMsg);
-        }
 
         try {
             return doIt(machineService.addMachine(loginType, ip, port, loginUser, loginPassword, loginCmd, activeSudoRoot, activeSuRoot, rootPassword, rootCmd, "", param_tags));

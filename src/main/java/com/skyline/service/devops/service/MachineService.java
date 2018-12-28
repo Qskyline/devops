@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.regex.Pattern;
 
 @Service
 public class MachineService {
@@ -57,12 +58,12 @@ public class MachineService {
     @Transactional
     public boolean addMachine(String loginType,
                               String ip,
-                              int port,
+                              String port,
                               String logingUser,
                               String loginPassword,
                               String loginCmd,
-                              boolean activeSudoRoot,
-                              boolean activeSuRoot,
+                              String activeSudoRoot,
+                              String activeSuRoot,
                               String rootPassword,
                               String rootCmd,
                               String desc,
@@ -84,14 +85,14 @@ public class MachineService {
         //添加机器
         MachineInfoDecrypt machine = new MachineInfoDecrypt(
                 ip,
-                String.valueOf(port),
+                port,
                 loginType,
                 logingUser,
                 loginPassword,
                 user);
         machine.setLoginUserCmd(loginCmd);
-        machine.setIsActiveSudoRoot(String.valueOf(activeSudoRoot));
-        machine.setIsActiveSuRoot(String.valueOf(activeSuRoot));
+        machine.setIsActiveSudoRoot(activeSudoRoot);
+        machine.setIsActiveSuRoot(activeSuRoot);
         machine.setRootPassword(rootPassword);
         machine.setRootCmd(rootCmd);
         machine.setDescription(desc);
@@ -143,6 +144,11 @@ public class MachineService {
     }
 
     private boolean changeMachine(MachineInfoDecrypt machineInfoDecrypt, MachineEntity machineEntity) throws Exception {
+        if (!machineCheck(machineInfoDecrypt)) {
+            logger.error("Machine check failed.");
+            return false;
+        }
+
         if (machineEntity != null) {
             tagDao.deleteByMachineId(SecurityUtil.desEncrpt(machineEntity.getId(), desKey));
         }
@@ -303,6 +309,62 @@ public class MachineService {
         return result;
     }
 
+    private boolean machineCheck(MachineInfoDecrypt machineInfoDecrypt) {
+        // must params check
+        if (StringUtils.isEmpty(machineInfoDecrypt.getLoginType())
+                || StringUtils.isEmpty(machineInfoDecrypt.getIp())
+                || StringUtils.isEmpty(machineInfoDecrypt.getLoginUser())
+                || StringUtils.isEmpty(machineInfoDecrypt.getLoginPassword())
+                || StringUtils.isEmpty(machineInfoDecrypt.getSshPort())) {
+            logger.error("Can not fetch enough params.");
+            return false;
+        }
+
+        // ip check
+        if (!StringUtil.isIp(machineInfoDecrypt.getIp())) {
+            logger.error("IP checking failed.");
+            return false;
+        }
+
+        //loginType check
+        String loginType = machineInfoDecrypt.getLoginType();
+        if (!"password".equals(loginType) && !"key".equals(loginType)) {
+            logger.error("The param \"loginType\" must be \"password\" or \"key\".");
+            return false;
+        }
+
+        //port check
+        String port = machineInfoDecrypt.getSshPort();
+        Pattern pattern = Pattern.compile("^[0-9]+$");
+        if (!pattern.matcher(port).matches() || port.startsWith("0") || Integer.valueOf(port) < 22) {
+            String errMsg =  "The \"port\" param must be numeric.";
+            logger.error("The \"port\" param must be numeric and great than or equal 22.");
+            return false;
+        }
+
+        //loginUser check
+        pattern = Pattern.compile("^[a-z|A-Z|_|\\-]{3,}$");
+        if (!pattern.matcher(machineInfoDecrypt.getLoginUser()).matches()) {
+            logger.error("The \"loginUser\" param check failed.");
+            return false;
+        }
+
+        //activeSudoRoot and activeSuRoot check
+        String activeSudoRoot = machineInfoDecrypt.getIsActiveSudoRoot();
+        String activeSuRoot = machineInfoDecrypt.getIsActiveSuRoot();
+        pattern = Pattern.compile("^(true)|(false)$");
+        if (StringUtils.isNotEmpty(activeSudoRoot) && !pattern.matcher(activeSudoRoot).matches()) {
+            logger.error("The params \"activeSudoRoot\" must be boolean.");
+            return false;
+        }
+        if (StringUtils.isNotEmpty(activeSuRoot) && !pattern.matcher(activeSuRoot).matches()) {
+            logger.error("The params \"activeSuRoot\" must be boolean.");
+            return false;
+        }
+
+        return true;
+    }
+
     private MachineInfoDecrypt parseMachineInfo(MachineEntity machineEntity, String key) {
         String fingerprint =
                 machineEntity.getIp()
@@ -449,7 +511,7 @@ public class MachineService {
                         if (StringUtils.isEmpty(ip) || StringUtils.isEmpty(password) || StringUtils.isEmpty(port) || StringUtils.isEmpty(user)) continue;
 
                         String tags = null;
-                        if (!StringUtils.isEmpty(note)) tags = tagsFilter(note.split("[，、,]"));
+                        if (StringUtils.isNotEmpty(note)) tags = tagsFilter(note.split("[，、,]"));
 
                         MachineInfoDecrypt machine = new MachineInfoDecrypt(
                                 ip,
