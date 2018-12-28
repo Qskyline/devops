@@ -397,13 +397,27 @@ public class MachineService {
     }
 
     public void importMachineInfoFromKeypass(String url, String userId) throws DocumentException {
+        Optional<User> optionalUser = userDao.findById(userId);
+        if (!optionalUser.isPresent()) {
+            logger.error("Can not fetch the UserInfo.");
+            return;
+        }
+        User currentUser = optionalUser.get();
+        importMachineInfoFromKeypass(url, currentUser);
+    }
+
+    public void importMachineInfoFromKeypass(String url, User currentUser) throws DocumentException {
+        if (currentUser == null) {
+            logger.error("Can not fetch the UserInfo.");
+            return;
+        }
+
         ArrayList<String> groupNames = new ArrayList<>();
         groupNames.add("kingdee-product");
         groupNames.add("shenzhen-dmz");
         groupNames.add("neiwang");
         groupNames.add("huaweiyun");
 
-        User currentUser = userService.getCurrentUser();
         SAXReader reader = new SAXReader();
         Document doc = reader.read(url);
         List<Element> groups = doc.getRootElement().element("Root").element("Group").elements("Group");
@@ -433,7 +447,6 @@ public class MachineService {
                             }
                         }
                         if (StringUtils.isEmpty(ip) || StringUtils.isEmpty(password) || StringUtils.isEmpty(port) || StringUtils.isEmpty(user)) continue;
-
 
                         String tags = null;
                         if (!StringUtils.isEmpty(note)) tags = tagsFilter(note.split("[，、,]"));

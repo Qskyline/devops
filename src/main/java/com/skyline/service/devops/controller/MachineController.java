@@ -118,4 +118,9 @@ public class MachineController extends BaseController {
     public ResponseModel getAllTag() {
         return new ResponseModel(machineService.getAllTags());
     }
+
+    /*@RequestMapping(value = {"/security/addMachineByKeypassFile.do"}, produces = {"application/json;charset=UTF-8"}, method = {RequestMethod.GET})
+    public ResponseModel addMachineByKeypassFile() {
+    }*/
+
 }
