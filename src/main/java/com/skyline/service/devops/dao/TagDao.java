@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface TagDao extends JpaRepository<TagEntity, String> {
     List<TagEntity> findByMachineId(String machineId);
+    int deleteByMachineId(String MachineId);
 }

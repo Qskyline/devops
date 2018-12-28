@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -82,20 +81,8 @@ public class MachineController extends BaseController {
             return new ResponseModel(ResponseStatus.OPERATION_ERROR_PARAMS,errMsg);
         }
 
-        ArrayList<String> tags;
-        if (StringUtils.isEmpty(param_tags)) {
-            tags = null;
-        } else {
-            String[] _tags = param_tags.split(",");
-            tags = new ArrayList();
-            for (String tag : _tags) {
-                if (StringUtils.isEmpty(tag)) continue;
-                tags.add(tag);
-            }
-        }
-
         try {
-            return doIt(machineService.addMachine(loginType, ip, port, loginUser, loginPassword, loginCmd, activeSudoRoot, activeSuRoot, rootPassword, rootCmd, "", tags));
+            return doIt(machineService.addMachine(loginType, ip, port, loginUser, loginPassword, loginCmd, activeSudoRoot, activeSuRoot, rootPassword, rootCmd, "", param_tags));
         } catch (Exception e) {
             logger.error(StringUtil.getExceptionStackTraceMessage(e));
             return new ResponseModel(ResponseStatus.OPERATION_ERROR);
@@ -129,7 +116,6 @@ public class MachineController extends BaseController {
 
     @RequestMapping(value = {"/security/getAllTag.do"}, produces = {"application/json;charset=UTF-8"}, method = {RequestMethod.POST})
     public ResponseModel getAllTag() {
-        String[] tags = new String[] {"redis", "zookeeper", "mysql", "mesos", "kbs", "rabbitmq", "marathon", "etcd", "elasticsearch", "kafka", "zipkin", "logstash"};
-        return new ResponseModel(tags);
+        return new ResponseModel(machineService.getAllTags());
     }
 }

@@ -21,10 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Random;
+import java.util.*;
 
 @Service
 public class MachineService {
@@ -40,55 +37,46 @@ public class MachineService {
     private Logger logger = LoggerFactory.getLogger(MachineService.class);
     private String desKey = "123242432443243";
 
+    private HashSet<String> allTags = new HashSet<>();
+
+    public MachineService() {
+        allTags.add("redis");
+        allTags.add("zookeeper");
+        allTags.add("mysql");
+        allTags.add("mesos");
+        allTags.add("kbs");
+        allTags.add("rabbitmq");
+        allTags.add("marathon");
+        allTags.add("etcd");
+        allTags.add("elasticsearch");
+        allTags.add("kafka");
+        allTags.add("zipkin");
+        allTags.add("logstash");
+    }
+
     @Transactional
     public boolean addMachine(String loginType,
-                           String ip,
-                           int port,
-                           String logingUser,
-                           String loginPassword,
-                           String loginCmd,
-                           boolean activeSudoRoot,
-                           boolean activeSuRoot,
-                           String rootPassword,
-                           String rootCmd,
-                           String desc,
-                           ArrayList<String> tags) throws Exception {
+                              String ip,
+                              int port,
+                              String logingUser,
+                              String loginPassword,
+                              String loginCmd,
+                              boolean activeSudoRoot,
+                              boolean activeSuRoot,
+                              String rootPassword,
+                              String rootCmd,
+                              String desc,
+                              String str_tag) throws Exception {
 
         //获取登陆用户信息
         User user = userService.getCurrentUser();
 
+        //获取tags
+        String tags = null;
+        if (!StringUtils.isEmpty(str_tag)) tags = tagsFilter(str_tag.split(","));
+
         //检查机器是否已经存在
-        List<MachineEntity> machineEntitys = machineDao.findByIp(ip);
-        boolean isAlreadExist = false;
-        if (machineEntitys != null && machineEntitys.size() > 0) {
-            for (int i = 0; i< machineEntitys.size(); i++) {
-                MachineEntity machine = machineEntitys.get(i);
-                List<TagEntity> tagEntities = tagDao.findByMachineId(machine.getId());
-                if ((tagEntities == null || tagEntities.size() == 0) && (tags == null || tags.size() == 0)) {
-                    isAlreadExist = true;
-                } else if (tags != null && tagEntities != null && tagEntities.size() == tags.size()) {
-                    boolean flag = false;
-                    for (String tag : tags) {
-                        boolean isFind = false;
-                        for (TagEntity _tag : tagEntities) {
-                            if (_tag.getName().equals(tag)) {
-                                isFind = true;
-                                break;
-                            }
-                        }
-                        if (!isFind) {
-                            flag = true;
-                            break;
-                        }
-                    }
-                    if (!flag) {
-                        isAlreadExist = true;
-                        break;
-                    }
-                }
-            }
-        }
-        if (isAlreadExist) {
+        if (isMachineAlreadyExist(ip, tags) != null) {
             logger.error("Machine already exist.");
             return false;
         }
@@ -108,17 +96,68 @@ public class MachineService {
         machine.setRootCmd(rootCmd);
         machine.setDescription(desc);
         machine.setStatus("normal");
+        machine.setTags(tags);
+        return changeMachine(machine, null);
+    }
 
-        MachineEntity machineEntity = lockMachineInfo(machine, desKey);
-        if (machineEntity == null) {
+    public boolean changeMachine(String machineId,
+                                 String loginType,
+                                 String ip,
+                                 int port,
+                                 String logingUser,
+                                 String loginPassword,
+                                 String loginCmd,
+                                 boolean activeSudoRoot,
+                                 boolean activeSuRoot,
+                                 String rootPassword,
+                                 String rootCmd,
+                                 String desc,
+                                 String str_tag) throws Exception {
+        Optional<MachineEntity> machineEntity = machineDao.findById(machineId);
+        if (!machineEntity.isPresent()) {
+            logger.error("Can not find the machine(id={})", machineId);
+            return false;
+        }
+
+        String tags = null;
+        if (!StringUtils.isEmpty(str_tag)) tags = tagsFilter(str_tag.split(","));
+
+        User user = userService.getCurrentUser();
+        MachineInfoDecrypt machine = new MachineInfoDecrypt(
+                ip,
+                String.valueOf(port),
+                loginType,
+                logingUser,
+                loginPassword,
+                user);
+        machine.setLoginUserCmd(loginCmd);
+        machine.setIsActiveSudoRoot(String.valueOf(activeSudoRoot));
+        machine.setIsActiveSuRoot(String.valueOf(activeSuRoot));
+        machine.setRootPassword(rootPassword);
+        machine.setRootCmd(rootCmd);
+        machine.setDescription(desc);
+        machine.setStatus("normal");
+        machine.setTags(tags);
+
+        return changeMachine(machine, machineEntity.get());
+    }
+
+    private boolean changeMachine(MachineInfoDecrypt machineInfoDecrypt, MachineEntity machineEntity) throws Exception {
+        if (machineEntity != null) {
+            tagDao.deleteByMachineId(SecurityUtil.desEncrpt(machineEntity.getId(), desKey));
+        }
+        MachineEntity machine = lockMachineInfo(machineInfoDecrypt, machineEntity, desKey);
+        if (machine == null) {
             logger.error("Lock machine info failed.");
             return false;
         }
 
-        machineDao.save(machineEntity);
-        if (tags != null && tags.size() > 0) {
-            for (String tag : tags) {
-                TagEntity tagEntity = new TagEntity(tag, SecurityUtil.desEncrpt(machineEntity.getId(), desKey));
+        machineDao.save(machine);
+        String tags = machineInfoDecrypt.getTags();
+        if (!StringUtils.isEmpty(tags)) {
+            String[] arr_tags = tags.split(",");
+            for (String tag : arr_tags) {
+                TagEntity tagEntity = new TagEntity(tag, SecurityUtil.desEncrpt(machine.getId(), desKey));
                 tagDao.save(tagEntity);
             }
         }
@@ -140,8 +179,12 @@ public class MachineService {
         return result;
     }
 
-    private MachineEntity lockMachineInfo(MachineInfoDecrypt machineInfoDecrypt, String key) {
-        MachineEntity machineEntity = new MachineEntity();
+    public HashSet<String> getAllTags() {
+        return this.allTags;
+    }
+
+    private MachineEntity lockMachineInfo(MachineInfoDecrypt machineInfoDecrypt, MachineEntity machineEntity, String key) {
+        if (machineEntity == null) machineEntity = new MachineEntity();
 
         try {
             String rowKey = String.valueOf(new Random().nextDouble());
@@ -205,6 +248,59 @@ public class MachineService {
             return null;
         }
         return machineEntity;
+    }
+
+    private MachineEntity isMachineAlreadyExist(String ip, String str_tags) {
+        List<MachineEntity> machineEntitys = machineDao.findByIp(ip);
+        MachineEntity result = null;
+        boolean isAlreadExist = false;
+        if (machineEntitys != null && machineEntitys.size() > 0) {
+            for (int i = 0; i< machineEntitys.size(); i++) {
+                MachineEntity machine = machineEntitys.get(i);
+                List<TagEntity> tagEntities = tagDao.findByMachineId(machine.getId());
+                String[] tags = null;
+                boolean isDbTagsEmpty = (tagEntities == null || tagEntities.size() == 0);
+                boolean isParamTagsEmpty = (str_tags == null || (tags = str_tags.split(",")).length == 0);
+                if (isDbTagsEmpty && isParamTagsEmpty) {
+                    isAlreadExist = true;
+                    result = machine;
+                    break;
+                } else if (!isDbTagsEmpty && !isParamTagsEmpty && tagEntities.size() == tags.length) {
+                    boolean flag = false;
+                    for (String tag : tags) {
+                        boolean isFind = false;
+                        for (TagEntity _tag : tagEntities) {
+                            if (_tag.getName().equals(tag)) {
+                                isFind = true;
+                                break;
+                            }
+                        }
+                        if (!isFind) {
+                            flag = true;
+                            break;
+                        }
+                    }
+                    if (!flag) {
+                        isAlreadExist = true;
+                        result = machine;
+                        break;
+                    }
+                }
+            }
+        }
+        if (isAlreadExist) return result;
+        else return null;
+    }
+
+    private String tagsFilter(String[] tags) {
+        String result = "";
+        for (String tag : tags) {
+            if (allTags.contains(tag)) result += (tag + ",");
+            else continue;
+        }
+        if (!StringUtils.isEmpty(result)) result = result.substring(0, result.length() - 1);
+        if (StringUtils.isEmpty(result)) return null;
+        return result;
     }
 
     private MachineInfoDecrypt parseMachineInfo(MachineEntity machineEntity, String key) {
@@ -307,19 +403,17 @@ public class MachineService {
         groupNames.add("neiwang");
         groupNames.add("huaweiyun");
 
-        ArrayList<MachineEntity> machineEntities = new ArrayList<>();
-
+        User currentUser = userService.getCurrentUser();
         SAXReader reader = new SAXReader();
         Document doc = reader.read(url);
         List<Element> groups = doc.getRootElement().element("Root").element("Group").elements("Group");
         for (Element group : groups) {
             for (String groupName : groupNames) {
                 if (group.element("Name").getText().equals(groupName)) {
-                    System.out.println("====================" + group.element("Name").getText() + "====================");
                     List<Element> entrys = group.elements("Entry");
                     for (Element e : entrys) {
                         List<Element> temp = e.elements("String");
-                        String desc = null;
+                        String note = "";
                         String ip = null;
                         String password = null;
                         String port = null;
@@ -327,7 +421,7 @@ public class MachineService {
                         for (Element t : temp) {
                             String key = t.element("Key").getText();
                             if (key.equals("Notes")) {
-                                desc = t.element("Value").getText();
+                                note = t.element("Value").getText();
                             } else if (key.equals("Password")) {
                                 password = t.element("Value").getText();
                             } else if (key.equals("Title")) {
@@ -340,6 +434,31 @@ public class MachineService {
                         }
                         if (StringUtils.isEmpty(ip) || StringUtils.isEmpty(password) || StringUtils.isEmpty(port) || StringUtils.isEmpty(user)) continue;
 
+
+                        String tags = null;
+                        if (!StringUtils.isEmpty(note)) tags = tagsFilter(note.split("[，、,]"));
+
+                        MachineInfoDecrypt machine = new MachineInfoDecrypt(
+                                ip,
+                                port,
+                                "password",
+                                user,
+                                password,
+                                currentUser);
+                        machine.setDescription(note);
+                        machine.setTags(tags);
+
+                        MachineEntity machineEntity = isMachineAlreadyExist(ip, tags);
+                        try {
+                            if (changeMachine(machine, machineEntity)){
+                                logger.info("Add/Update machine success by keypassFile! MachineIp={}", ip);
+                            } else  {
+                                logger.error("Add/Update machine failed by keypassFile! MachineIp={}", ip);
+                            }
+                        } catch (Exception e1) {
+                            logger.error("Add/Update machine failed by keypassFile! MachineIp={}", ip);
+                            logger.error(StringUtil.getExceptionStackTraceMessage(e1));
+                        }
                     }
                 }
             }
