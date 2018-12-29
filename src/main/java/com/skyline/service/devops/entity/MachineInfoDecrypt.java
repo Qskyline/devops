@@ -10,36 +10,74 @@ import com.skyline.platform.core.entity.User;
  * Version 1.0
  **/
 public class MachineInfoDecrypt {
-    //必选
+    //不可空
+    private String id;
+    private String loginType;
     private String ip;
     private String sshPort;
-    private String loginType;
     private String loginUser;
     private String loginPassword;
-
     User user;
+    private String status;
 
-    //可选
+    //可空
+    String tags;
+    private String description;
+
+    //可空,admin专属
     private String loginUserCmd;
     private String isActiveSudoRoot;
     private String isActiveSuRoot;
     private String rootPassword;
     private String rootCmd;
-    private String description;
-    private String status;
 
-    String tags;
-
-    public MachineInfoDecrypt(String ip, String sshPort, String loginType, String loginUser, String loginPassword, User user) {
+    public MachineInfoDecrypt(String id, String loginType, String ip, String sshPort, String loginUser, String loginPassword, User user, String status, String tags, String description, String loginUserCmd, String isActiveSudoRoot, String isActiveSuRoot, String rootPassword, String rootCmd) {
+        this.id = id;
+        this.loginType = loginType;
         this.ip = ip;
         this.sshPort = sshPort;
-        this.loginType = loginType;
         this.loginUser = loginUser;
         this.loginPassword = loginPassword;
         this.user = user;
+        this.status = status;
+        this.tags = tags;
+        this.description = description;
+        this.loginUserCmd = loginUserCmd;
+        this.isActiveSudoRoot = isActiveSudoRoot;
+        this.isActiveSuRoot = isActiveSuRoot;
+        this.rootPassword = rootPassword;
+        this.rootCmd = rootCmd;
+    }
+
+    public MachineInfoDecrypt(String loginType, String ip, String sshPort, String loginUser, String loginPassword, User user, String status, String tags, String description) {
+        this.loginType = loginType;
+        this.ip = ip;
+        this.sshPort = sshPort;
+        this.loginUser = loginUser;
+        this.loginPassword = loginPassword;
+        this.user = user;
+        this.status = status;
+        this.tags = tags;
+        this.description = description;
     }
 
     public MachineInfoDecrypt() {
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getLoginType() {
+        return loginType;
+    }
+
+    public void setLoginType(String loginType) {
+        this.loginType = loginType;
     }
 
     public String getIp() {
@@ -58,14 +96,6 @@ public class MachineInfoDecrypt {
         this.sshPort = sshPort;
     }
 
-    public String getLoginType() {
-        return loginType;
-    }
-
-    public void setLoginType(String loginType) {
-        this.loginType = loginType;
-    }
-
     public String getLoginUser() {
         return loginUser;
     }
@@ -80,6 +110,38 @@ public class MachineInfoDecrypt {
 
     public void setLoginPassword(String loginPassword) {
         this.loginPassword = loginPassword;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getTags() {
+        return tags;
+    }
+
+    public void setTags(String tags) {
+        this.tags = tags;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public String getLoginUserCmd() {
@@ -120,37 +182,5 @@ public class MachineInfoDecrypt {
 
     public void setRootCmd(String rootCmd) {
         this.rootCmd = rootCmd;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
-    }
-
-    public String getTags() {
-        return tags;
-    }
-
-    public void setTags(String tags) {
-        this.tags = tags;
     }
 }

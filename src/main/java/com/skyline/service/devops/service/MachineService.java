@@ -56,97 +56,40 @@ public class MachineService {
     }
 
     @Transactional
-    public boolean addMachine(String loginType,
-                              String ip,
-                              String port,
-                              String logingUser,
-                              String loginPassword,
-                              String loginCmd,
-                              String activeSudoRoot,
-                              String activeSuRoot,
-                              String rootPassword,
-                              String rootCmd,
-                              String desc,
-                              String str_tag) throws Exception {
-
-        //获取登陆用户信息
-        User user = userService.getCurrentUser();
-
-        //获取tags
+    public void addMachine(MachineInfoDecrypt machineInfoDecrypt) throws Exception {
+        //过滤非法tags
         String tags = null;
-        if (!StringUtils.isEmpty(str_tag)) tags = tagsFilter(str_tag.split(","));
+        if (StringUtils.isNotEmpty(machineInfoDecrypt.getTags())) tags = tagsFilter(machineInfoDecrypt.getTags().split(","));
+        machineInfoDecrypt.setTags(tags);
 
         //检查机器是否已经存在
-        if (isMachineAlreadyExist(ip, tags) != null) {
-            logger.error("Machine already exist.");
-            return false;
+        if (isMachineAlreadyExist(machineInfoDecrypt.getIp(), tags) != null) {
+            String error = "Machine already exist.";
+            logger.error(error);
+            throw new Exception(error);
         }
-
-        //添加机器
-        MachineInfoDecrypt machine = new MachineInfoDecrypt(
-                ip,
-                port,
-                loginType,
-                logingUser,
-                loginPassword,
-                user);
-        machine.setLoginUserCmd(loginCmd);
-        machine.setIsActiveSudoRoot(activeSudoRoot);
-        machine.setIsActiveSuRoot(activeSuRoot);
-        machine.setRootPassword(rootPassword);
-        machine.setRootCmd(rootCmd);
-        machine.setDescription(desc);
-        machine.setStatus("normal");
-        machine.setTags(tags);
-        return changeMachine(machine, null);
+        changeMachine(machineInfoDecrypt, null);
     }
 
-    public boolean changeMachine(String machineId,
-                                 String loginType,
-                                 String ip,
-                                 int port,
-                                 String logingUser,
-                                 String loginPassword,
-                                 String loginCmd,
-                                 boolean activeSudoRoot,
-                                 boolean activeSuRoot,
-                                 String rootPassword,
-                                 String rootCmd,
-                                 String desc,
-                                 String str_tag) throws Exception {
-        Optional<MachineEntity> machineEntity = machineDao.findById(machineId);
+    public void changeMachine(MachineInfoDecrypt machineInfoDecrypt) throws Exception {
+        Optional<MachineEntity> machineEntity = machineDao.findById(machineInfoDecrypt.getId());
         if (!machineEntity.isPresent()) {
-            logger.error("Can not find the machine(id={})", machineId);
-            return false;
+            String error_msg = "Can not find the machine";
+            logger.error(error_msg + "(id={})", machineInfoDecrypt.getId());
+            throw new Exception(error_msg + "(id=" + machineInfoDecrypt.getId() + ")");
         }
 
         String tags = null;
-        if (!StringUtils.isEmpty(str_tag)) tags = tagsFilter(str_tag.split(","));
-
-        User user = userService.getCurrentUser();
-        MachineInfoDecrypt machine = new MachineInfoDecrypt(
-                ip,
-                String.valueOf(port),
-                loginType,
-                logingUser,
-                loginPassword,
-                user);
-        machine.setLoginUserCmd(loginCmd);
-        machine.setIsActiveSudoRoot(String.valueOf(activeSudoRoot));
-        machine.setIsActiveSuRoot(String.valueOf(activeSuRoot));
-        machine.setRootPassword(rootPassword);
-        machine.setRootCmd(rootCmd);
-        machine.setDescription(desc);
-        machine.setStatus("normal");
-        machine.setTags(tags);
-
-        return changeMachine(machine, machineEntity.get());
+        if (StringUtils.isNotEmpty(machineInfoDecrypt.getTags())) tags = tagsFilter(machineInfoDecrypt.getTags().split(","));
+        machineInfoDecrypt.setTags(tags);
+        changeMachine(machineInfoDecrypt, machineEntity.get());
     }
 
-    private boolean changeMachine(MachineInfoDecrypt machineInfoDecrypt, MachineEntity machineEntity) throws Exception {
+    private void changeMachine(MachineInfoDecrypt machineInfoDecrypt, MachineEntity machineEntity) throws Exception {
         if (!machineCheck(machineInfoDecrypt)) {
-            logger.error("Machine check failed.");
-            return false;
+            String error = "Machine check failed.";
+            logger.error(error);
+            throw new Exception(error);
         }
 
         if (machineEntity != null) {
@@ -154,8 +97,9 @@ public class MachineService {
         }
         MachineEntity machine = lockMachineInfo(machineInfoDecrypt, machineEntity, desKey);
         if (machine == null) {
-            logger.error("Lock machine info failed.");
-            return false;
+            String error_msg = "Lock machine info failed.";
+            logger.error(error_msg);
+            throw new Exception(error_msg);
         }
 
         machineDao.save(machine);
@@ -167,7 +111,6 @@ public class MachineService {
                 tagDao.save(tagEntity);
             }
         }
-        return true;
     }
 
     public List<MachineInfoDecrypt> getAllMachine() {
@@ -394,6 +337,7 @@ public class MachineService {
             //解密
             String rowKey = SecurityUtil.desDecrpt(machineEntity.getRowKey(), key);
 
+            machineInfoDecrypt.setId(machineEntity.getId());
             machineInfoDecrypt.setIp(SecurityUtil.desDecrpt(machineEntity.getIp(), rowKey));
             machineInfoDecrypt.setSshPort(SecurityUtil.desDecrpt(machineEntity.getSshPort(), rowKey));
             machineInfoDecrypt.setLoginType(SecurityUtil.desDecrpt(machineEntity.getLoginType(), rowKey));
@@ -514,22 +458,20 @@ public class MachineService {
                         if (StringUtils.isNotEmpty(note)) tags = tagsFilter(note.split("[，、,]"));
 
                         MachineInfoDecrypt machine = new MachineInfoDecrypt(
+                                "password",
                                 ip,
                                 port,
-                                "password",
                                 user,
                                 password,
-                                currentUser);
-                        machine.setDescription(note);
-                        machine.setTags(tags);
+                                currentUser,
+                                "normal",
+                                tags,
+                                note);
 
                         MachineEntity machineEntity = isMachineAlreadyExist(ip, tags);
                         try {
-                            if (changeMachine(machine, machineEntity)){
-                                logger.info("Add/Update machine success by keypassFile! MachineIp={}", ip);
-                            } else  {
-                                logger.error("Add/Update machine failed by keypassFile! MachineIp={}", ip);
-                            }
+                            changeMachine(machine, machineEntity);
+                            logger.info("Add/Update machine success by keypassFile! MachineIp={}", ip);
                         } catch (Exception e1) {
                             logger.error("Add/Update machine failed by keypassFile! MachineIp={}", ip);
                             logger.error(StringUtil.getExceptionStackTraceMessage(e1));
