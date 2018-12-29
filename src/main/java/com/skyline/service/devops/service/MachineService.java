@@ -71,6 +71,7 @@ public class MachineService {
         changeMachine(machineInfoDecrypt, null);
     }
 
+    @Transactional
     public void changeMachine(MachineInfoDecrypt machineInfoDecrypt) throws Exception {
         Optional<MachineEntity> machineEntity = machineDao.findById(machineInfoDecrypt.getId());
         if (!machineEntity.isPresent()) {
@@ -85,6 +86,7 @@ public class MachineService {
         changeMachine(machineInfoDecrypt, machineEntity.get());
     }
 
+    @Transactional
     private void changeMachine(MachineInfoDecrypt machineInfoDecrypt, MachineEntity machineEntity) throws Exception {
         if (!machineCheck(machineInfoDecrypt)) {
             String error = "Machine check failed.";
