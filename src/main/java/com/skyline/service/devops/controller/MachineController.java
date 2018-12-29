@@ -81,7 +81,7 @@ public class MachineController extends BaseController {
         } catch (Exception e) {
             String error_msg = StringUtil.getExceptionStackTraceMessage(e);
             logger.error(error_msg);
-            return new ResponseModel(ResponseStatus.OPERATION_ERROR, error_msg);
+            return new ResponseModel(ResponseStatus.OPERATION_ERROR, e.getMessage());
         }
     }
 

@@ -87,12 +87,8 @@ public class MachineService {
     }
 
     @Transactional
-    private void changeMachine(MachineInfoDecrypt machineInfoDecrypt, MachineEntity machineEntity) throws Exception {
-        if (!machineCheck(machineInfoDecrypt)) {
-            String error = "Machine check failed.";
-            logger.error(error);
-            throw new Exception(error);
-        }
+    public void changeMachine(MachineInfoDecrypt machineInfoDecrypt, MachineEntity machineEntity) throws Exception {
+        machineCheck(machineInfoDecrypt);
 
         if (machineEntity != null) {
             tagDao.deleteByMachineId(SecurityUtil.desEncrpt(machineEntity.getId(), desKey));
@@ -254,44 +250,48 @@ public class MachineService {
         return result;
     }
 
-    private boolean machineCheck(MachineInfoDecrypt machineInfoDecrypt) {
+    private void machineCheck(MachineInfoDecrypt machineInfoDecrypt) throws Exception {
         // must params check
         if (StringUtils.isEmpty(machineInfoDecrypt.getLoginType())
                 || StringUtils.isEmpty(machineInfoDecrypt.getIp())
                 || StringUtils.isEmpty(machineInfoDecrypt.getLoginUser())
                 || StringUtils.isEmpty(machineInfoDecrypt.getLoginPassword())
                 || StringUtils.isEmpty(machineInfoDecrypt.getSshPort())) {
-            logger.error("Can not fetch enough params.");
-            return false;
+            String error_msg = "Can not fetch enough params.";
+            logger.error(error_msg);
+            throw new Exception(error_msg);
         }
 
         // ip check
         if (!StringUtil.isIp(machineInfoDecrypt.getIp())) {
-            logger.error("IP checking failed.");
-            return false;
+            String error_msg = "IP checking failed.";
+            logger.error(error_msg);
+            throw new Exception(error_msg);
         }
 
         //loginType check
         String loginType = machineInfoDecrypt.getLoginType();
         if (!"password".equals(loginType) && !"key".equals(loginType)) {
-            logger.error("The param \"loginType\" must be \"password\" or \"key\".");
-            return false;
+            String error_msg = "The param \"loginType\" must be \"password\" or \"key\".";
+            logger.error(error_msg);
+            throw new Exception(error_msg);
         }
 
         //port check
         String port = machineInfoDecrypt.getSshPort();
         Pattern pattern = Pattern.compile("^[0-9]+$");
         if (!pattern.matcher(port).matches() || port.startsWith("0") || Integer.valueOf(port) < 22) {
-            String errMsg =  "The \"port\" param must be numeric.";
-            logger.error("The \"port\" param must be numeric and great than or equal 22.");
-            return false;
+            String error_msg = "The \"port\" param must be numeric and great than or equal 22.";
+            logger.error(error_msg);
+            throw new Exception(error_msg);
         }
 
         //loginUser check
         pattern = Pattern.compile("^[a-z|A-Z|_|\\-]{3,}$");
         if (!pattern.matcher(machineInfoDecrypt.getLoginUser()).matches()) {
-            logger.error("The \"loginUser\" param check failed.");
-            return false;
+            String error_msg = "The \"loginUser\" param check failed.";
+            logger.error(error_msg);
+            throw new Exception(error_msg);
         }
 
         //activeSudoRoot and activeSuRoot check
@@ -299,15 +299,15 @@ public class MachineService {
         String activeSuRoot = machineInfoDecrypt.getIsActiveSuRoot();
         pattern = Pattern.compile("^(true)|(false)$");
         if (StringUtils.isNotEmpty(activeSudoRoot) && !pattern.matcher(activeSudoRoot).matches()) {
-            logger.error("The params \"activeSudoRoot\" must be boolean.");
-            return false;
+            String error_msg = "The params \"activeSudoRoot\" must be boolean.";
+            logger.error(error_msg);
+            throw new Exception(error_msg);
         }
         if (StringUtils.isNotEmpty(activeSuRoot) && !pattern.matcher(activeSuRoot).matches()) {
-            logger.error("The params \"activeSuRoot\" must be boolean.");
-            return false;
+            String error_msg = "The params \"activeSuRoot\" must be boolean.";
+            logger.error(error_msg);
+            throw new Exception(error_msg);
         }
-
-        return true;
     }
 
     private MachineInfoDecrypt parseMachineInfo(MachineEntity machineEntity, String key) {
