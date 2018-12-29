@@ -72,7 +72,7 @@ public class MachineController extends BaseController {
                 rootCmd);
 
         try {
-            if (StringUtils.isEmpty(ip)) {
+            if (StringUtils.isEmpty(id)) {
                 machineService.addMachine(machine);
             } else {
                 machineService.changeMachine(machine);
