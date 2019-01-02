@@ -25,7 +25,7 @@ public class MachineServiceTest {
     @Test
     public void importMachineInfoFromKeypass() {
         try {
-            machineService.importMachineInfoFromKeypass("file:///Users/skyline/Downloads/kdngproduct.xml", "2c94569d67b19aef0167b1a32d2a0000");
+            machineService.importMachineInfoFromKeypass("file:///Users/skyline/Downloads/kdngproduct.xml", "2c948a84680d488801680d4ff3ce0000");
         } catch (DocumentException e) {
             e.printStackTrace();
         }
