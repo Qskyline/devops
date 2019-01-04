@@ -31,7 +31,7 @@ if [ -n "$5" ]; then
 fi
 
 #记录当前目录
-workdir=$(cd `dirname $0`; pwd)
+current_workdir=$(pwd)
 
 #判断必须params是否为空
 if [ -z "$repo_url" ]; then
@@ -56,7 +56,7 @@ if [ -z "$build_dir" ]; then
     build_dir=/tmp
 fi
 if [ -z "$output_dir" ]; then
-    output_dir=$workdir/src/main/resources/static
+    output_dir=$current_workdir/src/main/resources/static
 fi
 
 #拉取项目并进入项目目录
@@ -101,4 +101,4 @@ git checkout $current_branch
 git branch -d $build_branch
 
 #回到执行此脚本时的目录
-cd $workdir
+cd $current_workdir
