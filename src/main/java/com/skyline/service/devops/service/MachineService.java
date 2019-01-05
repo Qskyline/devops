@@ -404,6 +404,11 @@ public class MachineService {
         return result;
     }
 
+    public void importMachineInfoFromKeypass(String url) throws DocumentException {
+        User user = userService.getCurrentUser();
+        importMachineInfoFromKeypass(url, user);
+    }
+
     public void importMachineInfoFromKeypass(String url, String userId) throws DocumentException {
         Optional<User> optionalUser = userDao.findById(userId);
         if (!optionalUser.isPresent()) {

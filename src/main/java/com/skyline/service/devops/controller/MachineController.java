@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+
 import java.util.List;
 
 @RestController
@@ -124,5 +125,19 @@ public class MachineController extends BaseController {
     @RequestMapping(value = {"/security/getAllTag.do"}, produces = {"application/json;charset=UTF-8"}, method = {RequestMethod.POST})
     public ResponseModel getAllTag() {
         return new ResponseModel(machineService.getAllTags());
+    }
+
+    @RequestMapping(value = {"/security/importMachine.do"}, produces = {"application/json;charset=UTF-8"}, method = {RequestMethod.POST})
+    public ResponseModel importMachine(@RequestBody JSONObject args) {
+        String keypassXmlUrl = (String) args.get("url");
+        if (StringUtils.isEmpty(keypassXmlUrl)) return new ResponseModel(ResponseStatus.OPERATION_ERROR_PARAMS, "The param \"url\" can not be empty.");
+        try {
+            machineService.importMachineInfoFromKeypass(keypassXmlUrl);
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+            logger.error(StringUtil.getExceptionStackTraceMessage(e));
+            return new ResponseModel(ResponseStatus.OPERATION_ERROR, e.getMessage());
+        }
+        return new ResponseModel("success");
     }
 }
