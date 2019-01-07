@@ -76,7 +76,7 @@ public class MachineController extends BaseController {
             if (StringUtils.isEmpty(id)) {
                 machineService.addMachine(machine);
             } else {
-                machineService.changeMachine(machine);
+                machineService.updateMachine(machine);
             }
             return new ResponseModel("success");
         } catch (Exception e) {
