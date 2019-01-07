@@ -63,16 +63,68 @@ public class MachineService {
         machineInfoDecrypt.setTags(tags);
 
         //检查机器是否已经存在
-        if (isMachineAlreadyExist(machineInfoDecrypt.getIp(), tags) != null) {
+        if (isMachineAlreadyExist(machineInfoDecrypt)) {
             String error = "Machine already exist.";
             logger.error(error);
             throw new Exception(error);
         }
-        changeMachine(machineInfoDecrypt, null);
+
+        //新增机器时禁止指定machineId
+        if (StringUtils.isNotEmpty(machineInfoDecrypt.getId())) {
+            String error = "If you want to add a new machine, the machineId must be empty.";
+            logger.error(error);
+            throw new Exception(error);
+        }
+
+        //保存机器信息
+        saveMachine(machineInfoDecrypt, null);
     }
 
     @Transactional
-    public void changeMachine(MachineInfoDecrypt machineInfoDecrypt) throws Exception {
+    public void saveMachine(MachineInfoDecrypt machineInfoDecrypt, MachineEntity machineEntity) throws Exception {
+        //检查机器信息是否合法
+        machineCheck(machineInfoDecrypt);
+
+        //尝试获取machineEntity,以判断是否是更新操作
+        MachineEntity machine = machineEntity;
+        if (machine == null && StringUtils.isNotEmpty(machineInfoDecrypt.getId())) {
+            Optional<MachineEntity> m = machineDao.findById(machineInfoDecrypt.getId());
+            if (m.isPresent()) machine = m.get();
+        }
+
+        //如果是更新操作则删除原有machine的tags记录
+        if (machine != null) tagDao.deleteByMachineId(SecurityUtil.desEncrpt(machine.getId(), desKey));
+
+        //加密
+        machine = lockMachineInfo(machineInfoDecrypt, machine, desKey);
+        if (machine == null) {
+            String error_msg = "Lock machine info failed.";
+            logger.error(error_msg);
+            throw new Exception(error_msg);
+        }
+
+        //保存machine
+        machineDao.save(machine);
+
+        //保存tags
+        String tags = machineInfoDecrypt.getTags();
+        if (StringUtils.isNotEmpty(tags)) {
+            String[] arr_tags = tags.split(",");
+            for (String tag : arr_tags) {
+                TagEntity tagEntity = new TagEntity(tag, SecurityUtil.desEncrpt(machine.getId(), desKey));
+                tagDao.save(tagEntity);
+            }
+        }
+    }
+
+    @Transactional
+    public void updateMachine(MachineInfoDecrypt machineInfoDecrypt) throws Exception {
+        //获取machineEntity,以证明机器存在
+        if (StringUtils.isEmpty(machineInfoDecrypt.getId())) {
+            String error_msg = "If you want to update the Machine, please specify the machineId.";
+            logger.error(error_msg);
+            throw new Exception(error_msg);
+        }
         Optional<MachineEntity> machineEntity = machineDao.findById(machineInfoDecrypt.getId());
         if (!machineEntity.isPresent()) {
             String error_msg = "Can not find the machine";
@@ -80,35 +132,13 @@ public class MachineService {
             throw new Exception(error_msg + "(id=" + machineInfoDecrypt.getId() + ")");
         }
 
+        //过滤非法tags
         String tags = null;
         if (StringUtils.isNotEmpty(machineInfoDecrypt.getTags())) tags = tagsFilter(machineInfoDecrypt.getTags().split(","));
         machineInfoDecrypt.setTags(tags);
-        changeMachine(machineInfoDecrypt, machineEntity.get());
-    }
 
-    @Transactional
-    public void changeMachine(MachineInfoDecrypt machineInfoDecrypt, MachineEntity machineEntity) throws Exception {
-        machineCheck(machineInfoDecrypt);
-
-        if (machineEntity != null) {
-            tagDao.deleteByMachineId(SecurityUtil.desEncrpt(machineEntity.getId(), desKey));
-        }
-        MachineEntity machine = lockMachineInfo(machineInfoDecrypt, machineEntity, desKey);
-        if (machine == null) {
-            String error_msg = "Lock machine info failed.";
-            logger.error(error_msg);
-            throw new Exception(error_msg);
-        }
-
-        machineDao.save(machine);
-        String tags = machineInfoDecrypt.getTags();
-        if (!StringUtils.isEmpty(tags)) {
-            String[] arr_tags = tags.split(",");
-            for (String tag : arr_tags) {
-                TagEntity tagEntity = new TagEntity(tag, SecurityUtil.desEncrpt(machine.getId(), desKey));
-                tagDao.save(tagEntity);
-            }
-        }
+        //保存机器信息
+        saveMachine(machineInfoDecrypt, machineEntity.get());
     }
 
     public List<MachineInfoDecrypt> getAllMachine() {
@@ -124,6 +154,15 @@ public class MachineService {
             if (machine.getUser().getId().equals(user.getId())) result.add(machine);
         }
         return result;
+    }
+
+    public List<MachineInfoDecrypt> getMachinesByIp(String ip) {
+        List<MachineInfoDecrypt> machines = getAllMachine();
+        ArrayList<MachineInfoDecrypt> machineInfoDecrypts = new ArrayList<>();
+        for (MachineInfoDecrypt m : machines) {
+            if (ip.equals(m.getIp())) machineInfoDecrypts.add(m);
+        }
+        return machineInfoDecrypts;
     }
 
     public HashSet<String> getAllTags() {
@@ -197,46 +236,41 @@ public class MachineService {
         return machineEntity;
     }
 
-    private MachineEntity isMachineAlreadyExist(String ip, String str_tags) {
-        List<MachineEntity> machineEntitys = machineDao.findByIp(ip);
-        MachineEntity result = null;
-        boolean isAlreadExist = false;
-        if (machineEntitys != null && machineEntitys.size() > 0) {
-            for (int i = 0; i< machineEntitys.size(); i++) {
-                MachineEntity machine = machineEntitys.get(i);
-                List<TagEntity> tagEntities = tagDao.findByMachineId(machine.getId());
-                String[] tags = null;
-                boolean isDbTagsEmpty = (tagEntities == null || tagEntities.size() == 0);
-                boolean isParamTagsEmpty = (str_tags == null || (tags = str_tags.split(",")).length == 0);
-                if (isDbTagsEmpty && isParamTagsEmpty) {
-                    isAlreadExist = true;
-                    result = machine;
-                    break;
-                } else if (!isDbTagsEmpty && !isParamTagsEmpty && tagEntities.size() == tags.length) {
-                    boolean flag = false;
-                    for (String tag : tags) {
-                        boolean isFind = false;
-                        for (TagEntity _tag : tagEntities) {
-                            if (_tag.getName().equals(tag)) {
-                                isFind = true;
-                                break;
-                            }
-                        }
-                        if (!isFind) {
-                            flag = true;
-                            break;
-                        }
-                    }
-                    if (!flag) {
-                        isAlreadExist = true;
-                        result = machine;
-                        break;
-                    }
+    private boolean isMachineAlreadyExist(MachineInfoDecrypt machine) {
+        List<MachineInfoDecrypt> machineInfoDecrypts = getMachinesByIp(machine.getIp());
+        if (machineInfoDecrypts != null && machineInfoDecrypts.size() > 0) {
+            for (int i = 0; i< machineInfoDecrypts.size(); i++) {
+                if (compareMachine(machine, machineInfoDecrypts.get(i))) {
+                    return true;
                 }
             }
         }
-        if (isAlreadExist) return result;
-        else return null;
+        return false;
+    }
+
+    private boolean compareMachine(MachineInfoDecrypt machine1, MachineInfoDecrypt machine2){
+        if (machine1.getIp() != machine2.getIp()) return false;
+        String[] machine1_tags = null;
+        String[] machine2_tags = null;
+        boolean is_machine1_tags_empty = (machine1.getTags() == null || (machine1_tags = machine1.getTags().split(",")).length == 0);
+        boolean is_machine2_tags_empty = (machine2.getTags() == null || (machine2_tags = machine2.getTags().split(",")).length == 0);
+        if (is_machine1_tags_empty && is_machine2_tags_empty) {
+            return true;
+        } else if (!is_machine1_tags_empty && !is_machine2_tags_empty && machine1_tags.length == machine2_tags.length) {
+            for (String machine1_tag : machine1_tags) {
+                boolean isFind = false;
+                for (String machine2_tag : machine2_tags) {
+                    if (machine1_tag.equals(machine2_tag)) {
+                        isFind = true;
+                        break;
+                    }
+                }
+                if (!isFind) return false;
+            }
+            return true;
+        } else {
+            return false;
+        }
     }
 
     private String tagsFilter(String[] tags) {
@@ -475,9 +509,9 @@ public class MachineService {
                                 tags,
                                 note);
 
-                        MachineEntity machineEntity = isMachineAlreadyExist(ip, tags);
+                        if (isMachineAlreadyExist(machine)) continue;
                         try {
-                            changeMachine(machine, machineEntity);
+                            saveMachine(machine, null);
                             logger.info("Add/Update machine success by keypassFile! MachineIp={}", ip);
                         } catch (Exception e1) {
                             logger.error("Add/Update machine failed by keypassFile! MachineIp={}", ip);
