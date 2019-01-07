@@ -14,11 +14,10 @@ import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.*;
 import java.util.List;
 
 @RestController
@@ -127,10 +126,29 @@ public class MachineController extends BaseController {
         return new ResponseModel(machineService.getAllTags());
     }
 
-    @RequestMapping(value = {"/security/importMachine.do"}, produces = {"application/json;charset=UTF-8"}, method = {RequestMethod.POST})
-    public ResponseModel importMachine(@RequestBody JSONObject args) {
-        String keypassXmlUrl = (String) args.get("url");
-        if (StringUtils.isEmpty(keypassXmlUrl)) return new ResponseModel(ResponseStatus.OPERATION_ERROR_PARAMS, "The param \"url\" can not be empty.");
+    @RequestMapping(value = {"/security/importMachine.do"}, method = {RequestMethod.POST})
+    public ResponseModel importMachine(@RequestParam("file") MultipartFile file) {
+        String keypassFilePath = System.getProperty("java.io.tmpdir") + System.getProperty("file.separator") + file.getOriginalFilename();
+        String keypassXmlUrl = "file://" + keypassFilePath;
+        try {
+            OutputStream os=new FileOutputStream(keypassFilePath);
+            InputStream is=file.getInputStream();
+
+            byte[] buffer = new byte[5120];
+            int len;
+            while((len = is.read(buffer)) != -1) {
+                os.write(buffer, 0, len);
+            }
+            os.flush();
+            os.close();
+            is.close();
+        } catch (FileNotFoundException e) {
+           logger.error(StringUtil.getExceptionStackTraceMessage(e));
+            return new ResponseModel(ResponseStatus.OPERATION_ERROR, "FileNotFoundException");
+        } catch (IOException e) {
+            logger.error(StringUtil.getExceptionStackTraceMessage(e));
+            return new ResponseModel(ResponseStatus.OPERATION_ERROR, "IOException");
+        }
         try {
             machineService.importMachineInfoFromKeypass(keypassXmlUrl);
         } catch (Exception e) {
