@@ -182,7 +182,7 @@ public class MachineService {
     }
 
     private boolean compareMachine(MachineInfoDecrypt machine1, MachineInfoDecrypt machine2){
-        if (machine1.getIp() != machine2.getIp()) return false;
+        if (!machine1.getIp().equals(machine2.getIp())) return false;
         String[] machine1_tags = null;
         String[] machine2_tags = null;
         boolean is_machine1_tags_empty = (machine1.getTags() == null || (machine1_tags = machine1.getTags().split(",")).length == 0);
