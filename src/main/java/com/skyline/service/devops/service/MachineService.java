@@ -53,6 +53,12 @@ public class MachineService {
         allTags.add("kafka");
         allTags.add("zipkin");
         allTags.add("logstash");
+
+        allTags.add("kingdee");
+        allTags.add("kingdee-dmz");
+        allTags.add("kingdee-office");
+        allTags.add("kingdee-inner");
+        allTags.add("huawei-cloud");
     }
 
     @Transactional
