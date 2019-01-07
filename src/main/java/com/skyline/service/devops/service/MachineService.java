@@ -81,6 +81,30 @@ public class MachineService {
     }
 
     @Transactional
+    public void updateMachine(MachineInfoDecrypt machineInfoDecrypt) throws Exception {
+        //获取machineEntity,以证明机器存在
+        if (StringUtils.isEmpty(machineInfoDecrypt.getId())) {
+            String error_msg = "If you want to update the Machine, please specify the machineId.";
+            logger.error(error_msg);
+            throw new Exception(error_msg);
+        }
+        Optional<MachineEntity> machineEntity = machineDao.findById(machineInfoDecrypt.getId());
+        if (!machineEntity.isPresent()) {
+            String error_msg = "Can not find the machine";
+            logger.error(error_msg + "(id={})", machineInfoDecrypt.getId());
+            throw new Exception(error_msg + "(id=" + machineInfoDecrypt.getId() + ")");
+        }
+
+        //过滤非法tags
+        String tags = null;
+        if (StringUtils.isNotEmpty(machineInfoDecrypt.getTags())) tags = tagsFilter(machineInfoDecrypt.getTags().split(","));
+        machineInfoDecrypt.setTags(tags);
+
+        //保存机器信息
+        saveMachine(machineInfoDecrypt, machineEntity.get());
+    }
+
+    @Transactional
     public void saveMachine(MachineInfoDecrypt machineInfoDecrypt, MachineEntity machineEntity) throws Exception {
         //检查机器信息是否合法
         machineCheck(machineInfoDecrypt);
@@ -117,30 +141,6 @@ public class MachineService {
         }
     }
 
-    @Transactional
-    public void updateMachine(MachineInfoDecrypt machineInfoDecrypt) throws Exception {
-        //获取machineEntity,以证明机器存在
-        if (StringUtils.isEmpty(machineInfoDecrypt.getId())) {
-            String error_msg = "If you want to update the Machine, please specify the machineId.";
-            logger.error(error_msg);
-            throw new Exception(error_msg);
-        }
-        Optional<MachineEntity> machineEntity = machineDao.findById(machineInfoDecrypt.getId());
-        if (!machineEntity.isPresent()) {
-            String error_msg = "Can not find the machine";
-            logger.error(error_msg + "(id={})", machineInfoDecrypt.getId());
-            throw new Exception(error_msg + "(id=" + machineInfoDecrypt.getId() + ")");
-        }
-
-        //过滤非法tags
-        String tags = null;
-        if (StringUtils.isNotEmpty(machineInfoDecrypt.getTags())) tags = tagsFilter(machineInfoDecrypt.getTags().split(","));
-        machineInfoDecrypt.setTags(tags);
-
-        //保存机器信息
-        saveMachine(machineInfoDecrypt, machineEntity.get());
-    }
-
     public List<MachineInfoDecrypt> getAllMachine() {
         List<MachineEntity> machines = machineDao.findAll();
         return parseMachineInfo(machines, desKey);
@@ -167,73 +167,6 @@ public class MachineService {
 
     public HashSet<String> getAllTags() {
         return this.allTags;
-    }
-
-    private MachineEntity lockMachineInfo(MachineInfoDecrypt machineInfoDecrypt, MachineEntity machineEntity, String key) {
-        if (machineEntity == null) machineEntity = new MachineEntity();
-
-        try {
-            String rowKey = String.valueOf(new Random().nextDouble());
-
-            machineEntity.setIp(SecurityUtil.desEncrpt(machineInfoDecrypt.getIp(), rowKey));
-            machineEntity.setSshPort(SecurityUtil.desEncrpt(machineInfoDecrypt.getSshPort(), rowKey));
-            machineEntity.setLoginType(SecurityUtil.desEncrpt(machineInfoDecrypt.getLoginType(), rowKey));
-            machineEntity.setLoginUser(SecurityUtil.desEncrpt(machineInfoDecrypt.getLoginUser(), rowKey));
-            machineEntity.setLoginPassword(SecurityUtil.desEncrpt(machineInfoDecrypt.getLoginPassword(), rowKey));
-            machineEntity.setUserId(SecurityUtil.desEncrpt(machineInfoDecrypt.getUser().getId(), rowKey));
-
-            String defaultValue = machineInfoDecrypt.getLoginUserCmd();
-            if (StringUtils.isEmpty(defaultValue)) defaultValue = "q-null";
-            machineEntity.setLoginUserCmd(SecurityUtil.desEncrpt(defaultValue, rowKey));
-
-            defaultValue = machineInfoDecrypt.getIsActiveSudoRoot();
-            if (StringUtils.isEmpty(defaultValue)) defaultValue = "false";
-            machineEntity.setIsActiveSudoRoot(SecurityUtil.desEncrpt(defaultValue, rowKey));
-
-            defaultValue = machineInfoDecrypt.getIsActiveSuRoot();
-            if (StringUtils.isEmpty(defaultValue)) defaultValue = "false";
-            machineEntity.setIsActiveSuRoot(SecurityUtil.desEncrpt(defaultValue, rowKey));
-
-            defaultValue = machineInfoDecrypt.getRootPassword();
-            if (StringUtils.isEmpty(defaultValue)) defaultValue = "q-null";
-            machineEntity.setRootPassword(SecurityUtil.desEncrpt(defaultValue, rowKey));
-
-            defaultValue = machineInfoDecrypt.getRootCmd();
-            if (StringUtils.isEmpty(defaultValue)) defaultValue = "q-null";
-            machineEntity.setRootCmd(SecurityUtil.desEncrpt(defaultValue, rowKey));
-
-            defaultValue = machineInfoDecrypt.getDescription();
-            if (StringUtils.isEmpty(defaultValue)) defaultValue = "q-null";
-            machineEntity.setDescription(SecurityUtil.desEncrpt(defaultValue, rowKey));
-
-            defaultValue = machineInfoDecrypt.getStatus();
-            if (StringUtils.isEmpty(defaultValue)) defaultValue = "normal";
-            machineEntity.setStatus(SecurityUtil.desEncrpt(defaultValue, rowKey));
-
-            machineEntity.setRowKey(SecurityUtil.desEncrpt(rowKey, key));
-
-            String fingerprint =
-                    machineEntity.getIp()
-                            + machineEntity.getSshPort()
-                            + machineEntity.getLoginType()
-                            + machineEntity.getLoginUser()
-                            + machineEntity.getLoginPassword()
-                            + machineEntity.getUserId()
-                            + machineEntity.getLoginUserCmd()
-                            + machineEntity.getIsActiveSudoRoot()
-                            + machineEntity.getIsActiveSuRoot()
-                            + machineEntity.getRootPassword()
-                            + machineEntity.getRootCmd()
-                            + machineEntity.getDescription()
-                            + machineEntity.getStatus()
-                            + machineEntity.getRowKey();
-
-            machineEntity.setFingerprint(SecurityUtil.Md5(SecurityUtil.desEncrpt(fingerprint, key)));
-        } catch (Exception e) {
-            logger.error(StringUtil.getExceptionStackTraceMessage(e));
-            return null;
-        }
-        return machineEntity;
     }
 
     private boolean isMachineAlreadyExist(MachineInfoDecrypt machine) {
@@ -344,6 +277,82 @@ public class MachineService {
         }
     }
 
+    private MachineEntity lockMachineInfo(MachineInfoDecrypt machineInfoDecrypt, MachineEntity machineEntity, String key) {
+        if (machineEntity == null) machineEntity = new MachineEntity();
+
+        try {
+            String rowKey = String.valueOf(new Random().nextDouble());
+
+            machineEntity.setIp(SecurityUtil.desEncrpt(machineInfoDecrypt.getIp(), rowKey));
+            machineEntity.setSshPort(SecurityUtil.desEncrpt(machineInfoDecrypt.getSshPort(), rowKey));
+            machineEntity.setLoginType(SecurityUtil.desEncrpt(machineInfoDecrypt.getLoginType(), rowKey));
+            machineEntity.setLoginUser(SecurityUtil.desEncrpt(machineInfoDecrypt.getLoginUser(), rowKey));
+            machineEntity.setLoginPassword(SecurityUtil.desEncrpt(machineInfoDecrypt.getLoginPassword(), rowKey));
+            machineEntity.setUserId(SecurityUtil.desEncrpt(machineInfoDecrypt.getUser().getId(), rowKey));
+
+            String defaultValue = machineInfoDecrypt.getLoginUserCmd();
+            if (StringUtils.isEmpty(defaultValue)) defaultValue = "q-null";
+            machineEntity.setLoginUserCmd(SecurityUtil.desEncrpt(defaultValue, rowKey));
+
+            defaultValue = machineInfoDecrypt.getIsActiveSudoRoot();
+            if (StringUtils.isEmpty(defaultValue)) defaultValue = "false";
+            machineEntity.setIsActiveSudoRoot(SecurityUtil.desEncrpt(defaultValue, rowKey));
+
+            defaultValue = machineInfoDecrypt.getIsActiveSuRoot();
+            if (StringUtils.isEmpty(defaultValue)) defaultValue = "false";
+            machineEntity.setIsActiveSuRoot(SecurityUtil.desEncrpt(defaultValue, rowKey));
+
+            defaultValue = machineInfoDecrypt.getRootPassword();
+            if (StringUtils.isEmpty(defaultValue)) defaultValue = "q-null";
+            machineEntity.setRootPassword(SecurityUtil.desEncrpt(defaultValue, rowKey));
+
+            defaultValue = machineInfoDecrypt.getRootCmd();
+            if (StringUtils.isEmpty(defaultValue)) defaultValue = "q-null";
+            machineEntity.setRootCmd(SecurityUtil.desEncrpt(defaultValue, rowKey));
+
+            defaultValue = machineInfoDecrypt.getDescription();
+            if (StringUtils.isEmpty(defaultValue)) defaultValue = "q-null";
+            machineEntity.setDescription(SecurityUtil.desEncrpt(defaultValue, rowKey));
+
+            defaultValue = machineInfoDecrypt.getStatus();
+            if (StringUtils.isEmpty(defaultValue)) defaultValue = "normal";
+            machineEntity.setStatus(SecurityUtil.desEncrpt(defaultValue, rowKey));
+
+            machineEntity.setRowKey(SecurityUtil.desEncrpt(rowKey, key));
+
+            String fingerprint =
+                    machineEntity.getIp()
+                            + machineEntity.getSshPort()
+                            + machineEntity.getLoginType()
+                            + machineEntity.getLoginUser()
+                            + machineEntity.getLoginPassword()
+                            + machineEntity.getUserId()
+                            + machineEntity.getLoginUserCmd()
+                            + machineEntity.getIsActiveSudoRoot()
+                            + machineEntity.getIsActiveSuRoot()
+                            + machineEntity.getRootPassword()
+                            + machineEntity.getRootCmd()
+                            + machineEntity.getDescription()
+                            + machineEntity.getStatus()
+                            + machineEntity.getRowKey();
+
+            machineEntity.setFingerprint(SecurityUtil.Md5(SecurityUtil.desEncrpt(fingerprint, key)));
+        } catch (Exception e) {
+            logger.error(StringUtil.getExceptionStackTraceMessage(e));
+            return null;
+        }
+        return machineEntity;
+    }
+
+    private List<MachineInfoDecrypt> parseMachineInfo(List<MachineEntity> machines, String key) {
+        ArrayList<MachineInfoDecrypt> result = new ArrayList<>();
+        for (MachineEntity machine : machines) {
+            MachineInfoDecrypt machineInfoDecrypt = parseMachineInfo(machine, key);
+            if (machineInfoDecrypt != null) result.add(machineInfoDecrypt);
+        }
+        return result;
+    }
+
     private MachineInfoDecrypt parseMachineInfo(MachineEntity machineEntity, String key) {
         String fingerprint =
                 machineEntity.getIp()
@@ -427,15 +436,6 @@ public class MachineService {
         }
 
        return machineInfoDecrypt;
-    }
-
-    private List<MachineInfoDecrypt> parseMachineInfo(List<MachineEntity> machines, String key) {
-        ArrayList<MachineInfoDecrypt> result = new ArrayList<>();
-        for (MachineEntity machine : machines) {
-            MachineInfoDecrypt machineInfoDecrypt = parseMachineInfo(machine, key);
-            if (machineInfoDecrypt != null) result.add(machineInfoDecrypt);
-        }
-        return result;
     }
 
     public void importMachineInfoFromKeypass(String url) throws DocumentException {
