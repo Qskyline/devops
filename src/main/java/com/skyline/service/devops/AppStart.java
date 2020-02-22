@@ -11,11 +11,11 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 @SpringBootApplication
 @EnableGlobalMethodSecurity(jsr250Enabled = true)
 @ComponentScan("com.skyline")
-public class Devops {
+public class AppStart {
     public static void main(String[] args) {
         Class[] classes = new Class[2];
         classes[0] = Run.class;
-        classes[1]= Devops.class;
+        classes[1]= AppStart.class;
         SpringApplication.run(classes , args);
     }
 }

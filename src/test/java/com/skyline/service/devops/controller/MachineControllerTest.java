@@ -1,7 +1,7 @@
 package com.skyline.service.devops.controller;
 
 import com.skyline.platform.core.Run;
-import com.skyline.service.devops.Devops;
+import com.skyline.service.devops.AppStart;
 import com.skyline.service.devops.MySpringJUnit4ClassRunner;
 import net.sf.json.JSONObject;
 import org.junit.Assert;
@@ -23,7 +23,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 import javax.servlet.http.Cookie;
 
 @RunWith(MySpringJUnit4ClassRunner.class)
-@SpringBootTest(classes = {Devops.class, Run.class})
+@SpringBootTest(classes = {AppStart.class, Run.class})
 @WebAppConfiguration
 @Transactional
 public class MachineControllerTest {

@@ -1,6 +1,6 @@
 package com.skyline.service.devops.service;
 
-import com.skyline.service.devops.Devops;
+import com.skyline.service.devops.AppStart;
 import com.skyline.service.devops.MySpringJUnit4ClassRunner;
 import org.dom4j.DocumentException;
 import org.junit.Test;
@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @RunWith(MySpringJUnit4ClassRunner.class)
-@SpringBootTest(classes = Devops.class)
+@SpringBootTest(classes = AppStart.class)
 public class MachineServiceTest {
     @Autowired
     MachineService machineService;

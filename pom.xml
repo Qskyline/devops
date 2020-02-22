@@ -30,7 +30,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <mainClass>com.skyline.service.devops.Devops</mainClass>
+                    <mainClass>com.skyline.service.devops.AppStart</mainClass>
                 </configuration>
             </plugin>
         </plugins>
